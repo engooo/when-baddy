@@ -151,6 +151,9 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
   };
 
   const currentHour = getSydneyCurrentHour();
+  const sydneyToday = getSydneyTodayDate();
+  const sydneyTodayStr = `${sydneyToday.getFullYear()}-${String(sydneyToday.getMonth() + 1).padStart(2, '0')}-${String(sydneyToday.getDate()).padStart(2, '0')}`;
+  const shouldHighlightCurrentHour = selectedDate === sydneyTodayStr;
 
   const getDateFromOffset = (offset: number): Date => {
     const date = getSydneyTodayDate();
@@ -329,7 +332,7 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
             <tr>
               <th className="location-column">Location</th>
               {ALL_TIME_HOURS.map((hour) => (
-                <th key={hour} className={`time-header ${hour === currentHour ? 'current-hour' : ''}`}>
+                <th key={hour} className={`time-header ${shouldHighlightCurrentHour && hour === currentHour ? 'current-hour' : ''}`}>
                   {formatHourDisplay(hour)}
                 </th>
               ))}
@@ -359,7 +362,7 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
                     return (
                       <td
                         key={hour}
-                        className={`availability-cell ${availClass} ${bookingUrl ? 'bookable' : ''} ${hour === currentHour ? 'current-hour' : ''}`}
+                        className={`availability-cell ${availClass} ${bookingUrl ? 'bookable' : ''} ${shouldHighlightCurrentHour && hour === currentHour ? 'current-hour' : ''}`}
                         title={bookingUrl ? 'Click to open booking page for this day' : ''}
                         onClick={() => handleCellClick(bookingUrl, location)}
                       >
