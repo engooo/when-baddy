@@ -83,7 +83,10 @@ function App() {
   return (
     <div className="app-container">
       <header className="app-header">
-        <h1><em>WHEN</em> <span>BADDY?</span></h1>
+        <div className="header-content">
+          <h1><em>WHEN</em> <span>BADDY?</span></h1>
+          <img src="/friend.jpg" alt="Friend cameo" className="friend-pic" />
+        </div>
         <p>Find Available Badminton Courts Near You</p>
       </header>
 
