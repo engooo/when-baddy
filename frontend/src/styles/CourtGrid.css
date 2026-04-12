@@ -1,0 +1,212 @@
+.court-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.club-section {
+  background: #ffffff;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e0e0e0;
+}
+
+.club-title {
+  padding: 1.5rem 2rem;
+  background: #f9f9f9;
+  color: #333;
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  border-bottom: 2px solid #4CAF50;
+}
+
+.club-title.alpha {
+  border-bottom-color: #4CAF50;
+}
+
+.club-title.nbc {
+  border-bottom-color: #4CAF50;
+}
+
+.club-title {
+  color: #333;
+}
+
+.location-section {
+  padding: 2rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.location-section:last-child {
+  border-bottom: none;
+}
+
+.location-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #4CAF50;
+  margin: 0 0 1.5rem 0;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #e0e0e0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.courts-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+
+.court-card {
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  padding: 1.25rem;
+  background: #ffffff;
+  transition: all 0.2s ease;
+}
+
+.court-card:hover {
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.15);
+  border-color: #4CAF50;
+  background: #242424;
+}
+
+.court-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+
+.court-header h4 {
+  margin: 0;
+  font-size: 1rem;
+  color: #333;
+  font-weight: 600;
+}
+
+.court-stats {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.slot-count {
+  background: #f0f0f0;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  color: #777;
+  font-weight: 500;
+}
+
+.available-badge {
+  background: #4CAF50;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.time-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(75px, 1fr));
+  gap: 0.4rem;
+  padding: 0.5rem;
+  background: #f0f0f0;
+  border-radius: 4px;
+  border: 1px solid #d8d8d8;
+}
+
+.time-slot {
+  padding: 0.6rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.time-slot.status-available {
+  background: #4CAF50;
+  border: 1px solid #4CAF50;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.time-slot.status-available:hover {
+  background: #66BB6A;
+  transform: scale(1.05);
+  box-shadow: 0 2px 6px rgba(76, 175, 80, 0.3);
+}
+
+.time-slot.status-booked {
+  background: #e0e0e0;
+  border: 1px solid #ddd;
+  color: #777;
+}
+
+.time-slot.status-past {
+  background: #f5f5f5;
+  border: 1px solid #e0e0e0;
+  color: #bbb;
+  opacity: 0.6;
+}
+
+.slot-time {
+  font-weight: 700;
+  font-size: 0.65rem;
+}
+
+.slot-price {
+  font-weight: 700;
+  font-size: 0.72rem;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 3px;
+  padding: 0.1rem 0.35rem;
+  display: inline-block;
+}
+
+.time-slot.status-available .slot-price {
+  color: #2e7d32;
+}
+
+.time-slot.status-booked .slot-price {
+  color: #555;
+}
+
+.slot-status {
+  font-size: 0.6rem;
+  text-transform: capitalize;
+  opacity: 0.8;
+}
+
+@media (max-width: 768px) {
+  .courts-container {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+
+  .filters {
+    flex-direction: column;
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .filter-select {
+    width: 100%;
+  }
+
+  .controls {
+    flex-direction: column;
+  }
+
+  .refresh-btn {
+    width: 100%;
+  }
+}

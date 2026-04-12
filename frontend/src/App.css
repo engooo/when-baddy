@@ -1,0 +1,108 @@
+.app-container {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #f5f5f5;
+  color: #333;
+}
+
+.app-header {
+  background: linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%);
+  color: #333;
+  padding: 3rem 2rem;
+  text-align: center;
+  border-bottom: 3px solid #4CAF50;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.12);
+  position: relative;
+  overflow: hidden;
+}
+
+.app-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(to right, transparent, #4CAF50, transparent);
+  opacity: 0.3;
+}
+
+.app-header h1 {
+  font-size: 3.5rem;
+  margin-bottom: 0.75rem;
+  font-weight: 900;
+  letter-spacing: -1.5px;
+}
+
+.app-header h1 em {
+  font-style: italic;
+  color: #333;
+  font-weight: 900;
+  font-size: 0.9em;
+  letter-spacing: -0.5px;
+}
+
+.app-header h1 span {
+  color: #4CAF50;
+  font-weight: 900;
+  display: inline-block;
+  transition: transform 0.3s ease, text-shadow 0.3s ease;
+  position: relative;
+}
+
+/* Animated underline effect for "BADDY?" */
+.app-header h1 span::after {
+  content: '';
+  position: absolute;
+  bottom: 10px;
+  left: -5px;
+  right: -5px;
+  height: 8px;
+  background: linear-gradient(135deg, transparent 0%, #4CAF50 20%, #4CAF50 80%, transparent 100%);
+  border-radius: 4px;
+  transform: skewY(-2deg);
+  opacity: 0.8;
+  box-shadow: 0 2px 6px rgba(76, 175, 80, 0.2);
+}
+
+.app-header h1 span:hover {
+  transform: scale(1.05);
+  text-shadow: 0 4px 12px rgba(76, 175, 80, 0.35);
+}
+
+.app-header p {
+  font-size: 0.95rem;
+  color: #777;
+  opacity: 0.8;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin: 0;
+  font-weight: 600;
+}
+
+.app-main {
+  flex: 1;
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.app-footer {
+  background: #ffffff;
+  color: #777;
+  text-align: center;
+  padding: 1.5rem;
+  border-top: 1px solid #e0e0e0;
+  font-size: 0.9rem;
+}
+
+.error-banner {
+  background: #3a1a1a;
+  color: #ff6b6b;
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  border-left: 4px solid #ff6b6b;
+}
