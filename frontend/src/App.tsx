@@ -4,6 +4,8 @@ import Home from './pages/Home'
 import { AggregatedCourt } from './types'
 import './App.css'
 
+const apiBaseUrl = (import.meta.env.VITE_API_URL ?? 'https://when-baddy-api.onrender.com').replace(/\/$/, '')
+
 function todayStr(): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Australia/Sydney',
@@ -43,7 +45,8 @@ function App() {
     setError(null)
     setCourts([])
     try {
-      const response = await axios.get(`/api/courts?date=${date}`)
+      const apiUrl = `${apiBaseUrl}/api/courts?date=${date}`
+      const response = await axios.get(apiUrl)
       if (requestId !== latestRequestRef.current) return
       const data: AggregatedCourt[] = response.data.data
       if (data.length > 0) {
