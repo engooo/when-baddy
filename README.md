@@ -4,7 +4,7 @@ When Baddy is a badminton court availability aggregator for Sydney venues. It sc
 
 ## What It Does
 
-- Aggregates court availability from Alpha, NBC, and Pro1 venues
+- Aggregates court availability from known Sydney venues
 - Supports date-based lookups across the upcoming week
 - Shows per-timeslot court counts and pricing
 - Provides a manual refresh flow for fresh scrape results
