@@ -36,7 +36,11 @@ export default function CourtGrid({ courts }: CourtGridProps) {
       {Object.entries(grouped).map(([club, locations]) => (
         <div key={club} className="club-section">
           <h2 className={`club-title ${club}`}>
-            {club === 'alpha' ? '🏸 Alpha Badminton' : '🏸 NBC Badminton'}
+            {club === 'alpha'
+              ? '🏸 Alpha Badminton'
+              : club === 'nbc'
+              ? '🏸 NBC Badminton'
+              : '🏸 Pro1 Badminton'}
           </h2>
 
           {Object.entries(locations).map(([location, courts_by_name]) => (

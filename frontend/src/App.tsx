@@ -57,7 +57,21 @@ function App() {
       setCourts(data)
     } catch (err) {
       if (requestId !== latestRequestRef.current) return
-      setError(err instanceof Error ? err.message : 'Failed to fetch courts')
+      let message = 'Failed to fetch courts'
+
+      if (axios.isAxiosError(err)) {
+        if (err.response) {
+          message = `API error (${err.response.status}) from ${apiBaseUrl}`
+        } else if (err.request) {
+          message = `Network error: cannot reach API at ${apiBaseUrl}`
+        } else if (err.message) {
+          message = err.message
+        }
+      } else if (err instanceof Error) {
+        message = err.message
+      }
+
+      setError(message)
       console.error('Error fetching courts:', err)
     } finally {
       if (requestId === latestRequestRef.current) {
@@ -100,7 +114,7 @@ function App() {
       </main>
 
       <footer className="app-footer">
-        <p>Aggregating courts from Alpha Badminton & NBC Badminton</p>
+        <p>Aggregating courts from Alpha Badminton, NBC Badminton, Pro1 Badminton & Roketto</p>
       </footer>
     </div>
   )

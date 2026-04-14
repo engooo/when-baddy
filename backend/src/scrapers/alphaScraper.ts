@@ -1,9 +1,9 @@
 import * as cheerio from 'cheerio';
 
 const ALPHA_LOCATIONS = [
-  { id: 2, name: 'Alpha Egerton', address: '46 Egerton Street, Silverwater NSW 2128', courts: 28 },
-  { id: 3, name: 'Alpha Auburn',  address: '161 Manchester Rd, Auburn NSW 2144',       courts: 22 },
-  { id: 1, name: 'Alpha Slough',  address: '2 Slough Avenue, Silverwater NSW 2128',    courts: 13 },
+  { id: 2, name: 'Egerton', address: '46 Egerton Street, Silverwater NSW 2128', suburb: 'Silverwater', courts: 28 },
+  { id: 3, name: 'Auburn',  address: '161 Manchester Rd, Auburn NSW 2144',       suburb: 'Auburn',       courts: 22 },
+  { id: 1, name: 'Slough',  address: '2 Slough Avenue, Silverwater NSW 2128',    suburb: 'Silverwater',  courts: 13 },
 ];
 
 const BASE_URL = 'https://alphabadminton.yepbooking.com.au';
@@ -154,7 +154,7 @@ function parseHtml(html: string, locationId: number) {
   return courtData;
 }
 
-async function scrapeAlphaLocation(locationId: number, locationName: string, address: string, date: { day: number; month: number; year: number }) {
+async function scrapeAlphaLocation(locationId: number, locationName: string, address: string, suburb: string, date: { day: number; month: number; year: number }) {
   try {
     const html = await fetchLocationHtml(locationId, date);
 
@@ -170,7 +170,7 @@ async function scrapeAlphaLocation(locationId: number, locationName: string, add
       console.warn(`⚠️  No courts parsed for ${locationName} — HTML structure may have changed`);
     }
 
-    return { locationId: `${locationId}`, locationName, address, courts };
+    return { locationId: `${locationId}`, locationName, address, suburb, courts };
   } catch (error) {
     console.error(`Error scraping ${locationName}:`, error);
     return null;
@@ -186,7 +186,7 @@ export async function scrapeAlphaBadminton(date?: { day: number; month: number; 
 
   // Fetch all 3 locations in parallel — safe now since we use fetch() not a shared browser page
   const locations = await Promise.all(
-    ALPHA_LOCATIONS.map((loc) => scrapeAlphaLocation(loc.id, loc.name, loc.address, d))
+    ALPHA_LOCATIONS.map((loc) => scrapeAlphaLocation(loc.id, loc.name, loc.address, loc.suburb, d))
   );
 
   return {

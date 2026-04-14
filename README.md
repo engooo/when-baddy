@@ -1,10 +1,10 @@
 # When Baddy
 
-When Baddy is a badminton court availability aggregator for Sydney venues. It scrapes Alpha Badminton and NBC Badminton, combines their open court slots into a single table, and lets users switch dates, compare venues, view prices, and jump out to the official booking sites.
+When Baddy is a badminton court availability aggregator for Sydney venues. It scrapes Alpha Badminton, NBC Badminton, and Pro1 Badminton, combines their open court slots into a single table, and lets users switch dates, compare venues, view prices, and jump out to the official booking sites.
 
 ## What It Does
 
-- Aggregates court availability from Alpha and NBC venues
+- Aggregates court availability from Alpha, NBC, and Pro1 venues
 - Supports date-based lookups across the upcoming week
 - Shows per-timeslot court counts and pricing
 - Provides a manual refresh flow for fresh scrape results
@@ -15,7 +15,7 @@ When Baddy is a badminton court availability aggregator for Sydney venues. It sc
 
 - Frontend: React, Vite, TypeScript, Axios
 - Backend: Node.js, Express, TypeScript, Cheerio
-- Data source: YepBooking schedule pages for Alpha and NBC locations
+- Data source: YepBooking schedule pages for Alpha and NBC, plus Pro1 public booking calendar endpoints
 
 ## Project Structure
 
@@ -23,7 +23,7 @@ When Baddy is a badminton court availability aggregator for Sydney venues. It sc
 when-baddy/
 ├── backend/
 │   ├── src/
-│   │   ├── scrapers/      # Alpha and NBC scraping logic
+│   │   ├── scrapers/      # Alpha, NBC, and Pro1 scraping logic
 │   │   ├── index.ts       # Express API entrypoint
 │   │   ├── service.ts     # Aggregation, cache, and request dedupe
 │   │   └── types.ts       # Shared backend types
@@ -148,4 +148,4 @@ Clears cached scrape data and fetches fresh results.
 
 ## Description
 
-Unified Sydney badminton court finder for Alpha and NBC venues, with live availability scraping, pricing, date switching, and direct booking links.
+Unified Sydney badminton court finder for Alpha, NBC, and Pro1 venues, with live availability scraping, pricing, date switching, and direct booking links.

@@ -2,9 +2,10 @@ import React, { useEffect, useMemo, useState } from 'react';
 import '../styles/WeeklyCourtTable.css';
 
 interface AggregatedCourt {
-  club: 'alpha' | 'nbc';
+  club: 'alpha' | 'nbc' | 'pro1' | 'roketto';
   location: string;
   locationId: string;
+  suburb: string;
   courtName: string;
   courtId: string;
   timeSlot: string; // e.g., "9:00am–10:00am"
@@ -19,6 +20,61 @@ interface WeeklyCourtTableProps {
   onDateChange: (date: string) => void;
   loading: boolean;
   onRefresh: () => void;
+}
+
+const DEFAULT_START_HOUR = 10;
+const DEFAULT_END_HOUR = 22;
+
+// Suburbs in order
+const SUBURB_ORDER = [
+  'Silverwater',
+  'Auburn',
+  'Granville',
+  'Lidcombe',
+  'Bankstown',
+  'Castle Hill',
+  'Seven Hills',
+  'Lane Cove',
+  'Alexandria',
+];
+
+function clampHour(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_START_HOUR;
+  if (value < DEFAULT_START_HOUR) return DEFAULT_START_HOUR;
+  if (value > DEFAULT_END_HOUR) return DEFAULT_END_HOUR;
+  return value;
+}
+
+function parseOptionalHourParam(raw: string | null): number | null {
+  if (raw === null || raw.trim() === '') return null;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function parseTimeSlotStartHour(timeSlot: string): number | null {
+  const normalized = timeSlot.trim().toLowerCase();
+
+  // Range format, e.g. "4:00pm–5:00pm"
+  let match = normalized.match(/^(\d{1,2}):(\d{2})(am|pm)\s*[–-]\s*(\d{1,2}):(\d{2})(am|pm)$/);
+  if (match) {
+    let hour = Number(match[1]);
+    const period = match[3];
+    if (period === 'pm' && hour !== 12) hour += 12;
+    if (period === 'am' && hour === 12) hour = 0;
+    return hour;
+  }
+
+  // Single time format, e.g. "4:00pm"
+  match = normalized.match(/^(\d{1,2}):(\d{2})(am|pm)$/);
+  if (match) {
+    let hour = Number(match[1]);
+    const period = match[3];
+    if (period === 'pm' && hour !== 12) hour += 12;
+    if (period === 'am' && hour === 12) hour = 0;
+    return hour;
+  }
+
+  return null;
 }
 
 function formatDateDMY(dateStr: string): string {
@@ -44,24 +100,68 @@ function getSydneyTodayDate(): Date {
 }
 
 export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDate, onDateChange, loading, onRefresh }) => {
+  const initialFilters = useMemo(() => {
+    if (typeof window === 'undefined') {
+      return {
+        selectedSuburbs: ['Silverwater', 'Auburn', 'Lidcombe', 'Bankstown'] as string[], // Default suburbs
+        fromHour: DEFAULT_START_HOUR,
+        toHour: DEFAULT_END_HOUR,
+        hideEmpty: true,
+      };
+    }
+
+    const params = new URLSearchParams(window.location.search);
+    const suburbsParam = params.get('suburbs');
+    const selectedSuburbs: string[] = suburbsParam
+      ? suburbsParam.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
+      : ['Silverwater', 'Auburn', 'Lidcombe', 'Bankstown']; // Default
+
+    const fromParam = parseOptionalHourParam(params.get('from'));
+    const toParam = parseOptionalHourParam(params.get('to'));
+    const fromHour = fromParam === null ? DEFAULT_START_HOUR : clampHour(fromParam);
+    const toHour = toParam === null ? DEFAULT_END_HOUR : clampHour(toParam);
+
+    const hideEmptyParam = params.get('hideEmpty');
+    const hideEmpty = hideEmptyParam === '0' || hideEmptyParam === 'false' ? false : true;
+
+    return {
+      selectedSuburbs,
+      fromHour: Math.min(fromHour, toHour),
+      toHour: Math.max(fromHour, toHour),
+      hideEmpty,
+    };
+  }, []);
+
   const [pendingBookingUrl, setPendingBookingUrl] = useState<string | null>(null);
   const [pendingLocation, setPendingLocation] = useState<string>('');
   const [timeTick, setTimeTick] = useState<number>(Date.now());
+  const [selectedSuburbs, setSelectedSuburbs] = useState<string[]>(initialFilters.selectedSuburbs);
+  const [startHour, setStartHour] = useState<number>(initialFilters.fromHour);
+  const [endHour, setEndHour] = useState<number>(initialFilters.toHour);
+  const [hideEmptyLocations, setHideEmptyLocations] = useState<boolean>(initialFilters.hideEmpty);
+  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState<boolean>(false);
 
-  const ALPHA_LOCATION_IDS: Record<string, number> = {
-    'Alpha Slough': 1,
-    'Alpha Egerton': 2,
-    'Alpha Auburn': 3,
+  const toggleSuburb = (suburb: string) => {
+    setSelectedSuburbs((prev) => {
+      if (prev.includes(suburb)) {
+        return prev.filter((s) => s !== suburb);
+      } else {
+        return [...prev, suburb];
+      }
+    });
   };
 
-  const NBC_LOCATION_IDS: Record<string, number> = {
-    Silverwater: 1,
-    'Seven Hills': 2,
-    Granville: 4,
-    'Castle Hill': 5,
-    Alexandria: 6,
-    'MQ Park': 7,
-  };
+  const allSuburbsInCourts = useMemo(() => {
+    const suburbs = new Set(courts.map((court) => court.suburb));
+    return Array.from(suburbs).sort((a, b) => {
+      const aIndex = SUBURB_ORDER.indexOf(a);
+      const bIndex = SUBURB_ORDER.indexOf(b);
+      if (aIndex === -1 && bIndex === -1) return a.localeCompare(b);
+      if (aIndex === -1) return 1;
+      if (bIndex === -1) return -1;
+      return aIndex - bIndex;
+    });
+  }, [courts]);
 
   const getBookingUrl = (locationKey: string): string | null => {
     const [yearStr, monthStr, dayStr] = selectedDate.split('-');
@@ -71,9 +171,21 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
 
     if (!year || !month || !day) return null;
 
-    if (locationKey.startsWith('Alpha - ')) {
-      const name = locationKey.replace('Alpha - ', '');
-      const id = ALPHA_LOCATION_IDS[name];
+    // locationKey is "Club - LocationName" (e.g. "Alpha - Egerton")
+    // c.location is just "Egerton", so strip the "Club - " prefix before matching
+    const locationName = locationKey.includes(' - ') ? locationKey.split(' - ').slice(1).join(' - ') : locationKey;
+    const court = courts.find((c) => c.location === locationName);
+    if (!court) return null;
+
+    const locationId = court.locationId;
+
+    if (court.club === 'alpha') {
+      const ALPHA_LOCATION_IDS: Record<string, number> = {
+        '1': 1,
+        '2': 2,
+        '3': 3,
+      };
+      const id = ALPHA_LOCATION_IDS[locationId];
       if (!id) return null;
 
       const params = new URLSearchParams({
@@ -89,9 +201,16 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
       return `https://alphabadminton.yepbooking.com.au/?${params.toString()}`;
     }
 
-    if (locationKey.startsWith('NBC - ')) {
-      const name = locationKey.replace('NBC - ', '');
-      const id = NBC_LOCATION_IDS[name];
+    if (court.club === 'nbc') {
+      const NBC_LOCATION_IDS: Record<string, number> = {
+        '1': 1,
+        '2': 2,
+        '4': 4,
+        '5': 5,
+        '6': 6,
+        '7': 7,
+      };
+      const id = NBC_LOCATION_IDS[locationId];
       if (!id) return null;
 
       const params = new URLSearchParams({
@@ -105,6 +224,14 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
       });
 
       return `https://nbc.yepbooking.com.au/?${params.toString()}`;
+    }
+
+    if (court.club === 'pro1') {
+      return 'https://booking.pro1badminton.com.au/secure/customer/booking/v1/public/show?readOnly=false&popupMsgDisabled=false&hideTopSiteBar=false';
+    }
+
+    if (court.club === 'roketto') {
+      return 'https://roketto.sportlogic.net.au/secure/customer/booking/v1/public/show?readOnly=false&popupMsgDisabled=false&hideTopSiteBar=false';
     }
 
     return null;
@@ -129,6 +256,11 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
 
   // All available time slots from 10am to 11pm (13 slots: 10-22)
   const ALL_TIME_HOURS = Array.from({ length: 13 }, (_, i) => 10 + i);
+
+  const visibleHours = useMemo(
+    () => ALL_TIME_HOURS.filter((hour) => hour >= startHour && hour <= endHour),
+    [startHour, endHour]
+  );
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -198,12 +330,73 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
     onDateChange(getDateStr(offset));
   };
 
+  const filteredCourts = useMemo(() => {
+    return courts.filter((court) => {
+      if (selectedSuburbs.length > 0 && !selectedSuburbs.includes(court.suburb)) {
+        return false;
+      }
+
+      const slotStartHour = parseTimeSlotStartHour(court.timeSlot);
+      if (slotStartHour === null) {
+        return false;
+      }
+
+      if (slotStartHour < startHour || slotStartHour > endHour) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [courts, selectedSuburbs, startHour, endHour]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const params = new URLSearchParams(window.location.search);
+
+    if (selectedSuburbs.length === 0) {
+      params.delete('suburbs');
+    } else {
+      params.set('suburbs', selectedSuburbs.join(','));
+    }
+
+    if (startHour === DEFAULT_START_HOUR) {
+      params.delete('from');
+    } else {
+      params.set('from', String(startHour));
+    }
+
+    if (endHour === DEFAULT_END_HOUR) {
+      params.delete('to');
+    } else {
+      params.set('to', String(endHour));
+    }
+
+    if (hideEmptyLocations) {
+      params.delete('hideEmpty');
+    } else {
+      params.set('hideEmpty', '0');
+    }
+
+    const query = params.toString();
+    const nextUrl = `${window.location.pathname}${query ? `?${query}` : ''}${window.location.hash}`;
+    window.history.replaceState({}, '', nextUrl);
+  }, [selectedSuburbs, startHour, endHour, hideEmptyLocations]);
+
   // Group courts by location and time slot (data is already filtered for the selected date)
   const courtsByLocationAndTime = useMemo(() => {
     const grouped: { [key: string]: { [time: string]: AggregatedCourt[] } } = {};
     
-    courts.forEach((court) => {
-      const locationKey = `${court.club === 'alpha' ? 'Alpha' : 'NBC'} - ${court.location}`;
+    filteredCourts.forEach((court) => {
+      const clubLabel =
+        court.club === 'alpha'
+          ? 'Alpha'
+          : court.club === 'nbc'
+            ? 'NBC'
+            : court.club === 'pro1'
+              ? 'Pro1'
+              : 'Roketto';
+      const locationKey = `${clubLabel} - ${court.location}`;
       if (!grouped[locationKey]) {
         grouped[locationKey] = {};
       }
@@ -214,14 +407,22 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
     });
     
     return grouped;
-  }, [courts]);
+  }, [filteredCourts]);
+
+  const hasAnyAvailabilityInVisibleRange = (location: string): boolean => {
+    return visibleHours.some((hour) => getCountForTimeSlot(location, hour) > 0);
+  };
 
   // Get all unique locations
   const allLocations = useMemo(() => {
-    return Object.keys(courtsByLocationAndTime).sort();
-  }, [courtsByLocationAndTime]);
+    const locations = Object.keys(courtsByLocationAndTime).sort();
+    if (!hideEmptyLocations) {
+      return locations;
+    }
+    return locations.filter((location) => hasAnyAvailabilityInVisibleRange(location));
+  }, [courtsByLocationAndTime, hideEmptyLocations, visibleHours]);
 
-  const getCountForTimeSlot = (location: string, hour: number): number => {
+  function getCountForTimeSlot(location: string, hour: number): number {
     // Find the time slot that starts at this hour
     const timeSlots = courtsByLocationAndTime[location] || {};
     
@@ -254,7 +455,7 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
     }
     
     return 0;
-  };
+  }
 
   const getPriceForTimeSlot = (location: string, hour: number): number | null => {
     const timeSlots = courtsByLocationAndTime[location] || {};
@@ -303,6 +504,49 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
     }
   };
 
+  const activeFilterChips = useMemo(() => {
+    const chips: Array<{ key: string; label: string; onClear: () => void }> = [];
+
+    const defaultSuburbs = ['Silverwater', 'Auburn', 'Lidcombe', 'Bankstown'];
+    if (selectedSuburbs.length !== defaultSuburbs.length || !defaultSuburbs.every((s) => selectedSuburbs.includes(s))) {
+      chips.push({
+        key: 'suburb',
+        label: selectedSuburbs.length === 1 ? `${selectedSuburbs[0]}` : `${selectedSuburbs.length} suburbs`,
+        onClear: () => setSelectedSuburbs(defaultSuburbs),
+      });
+    }
+
+    if (startHour !== DEFAULT_START_HOUR || endHour !== DEFAULT_END_HOUR) {
+      chips.push({
+        key: 'time',
+        label: `Time: ${formatHourDisplay(startHour)} - ${formatHourDisplay(endHour)}`,
+        onClear: () => {
+          setStartHour(DEFAULT_START_HOUR);
+          setEndHour(DEFAULT_END_HOUR);
+        },
+      });
+    }
+
+    if (!hideEmptyLocations) {
+      chips.push({
+        key: 'empty',
+        label: 'Showing empty locations',
+        onClear: () => setHideEmptyLocations(true),
+      });
+    }
+
+    return chips;
+  }, [selectedSuburbs, startHour, endHour, hideEmptyLocations]);
+
+  const resetFilters = () => {
+    setSelectedSuburbs(['Silverwater', 'Auburn', 'Lidcombe', 'Bankstown']); // Reset to default suburbs
+    setStartHour(DEFAULT_START_HOUR);
+    setEndHour(DEFAULT_END_HOUR);
+    setHideEmptyLocations(true);
+  };
+
+  const hasActiveFilters = activeFilterChips.length > 0;
+
   return (
     <div className="weekly-table-container">
       {/* Day Selector */}
@@ -325,13 +569,119 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
         </button>
       </div>
 
+      <div className="filter-panel-header">
+        <button
+          type="button"
+          className="filter-panel-toggle-btn"
+          onClick={() => setIsFilterPanelOpen((prev) => !prev)}
+          aria-expanded={isFilterPanelOpen}
+          aria-controls="court-filters-panel"
+        >
+          {isFilterPanelOpen ? 'Hide filters' : 'Show filters'}
+        </button>
+      </div>
+
+      {isFilterPanelOpen && (
+        <>
+          <div id="court-filters-panel" className="table-filters" role="group" aria-label="Court filters">
+            <div className="filter-field filter-toggle-field">
+              <span>Suburbs</span>
+              <div className="suburb-toggle-sections" role="group" aria-label="Suburb filters">
+                {allSuburbsInCourts.map((suburb) => (
+                  <button
+                    key={suburb}
+                    type="button"
+                    className={`toggle-btn ${selectedSuburbs.includes(suburb) ? 'active' : ''}`}
+                    onClick={() => toggleSuburb(suburb)}
+                  >
+                    {suburb}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <label className="filter-field filter-field-small">
+              <span>From</span>
+              <select
+                value={startHour}
+                onChange={(event) => {
+                  const nextStart = Number(event.target.value);
+                  setStartHour(nextStart);
+                  if (nextStart > endHour) {
+                    setEndHour(nextStart);
+                  }
+                }}
+              >
+                {ALL_TIME_HOURS.map((hour) => (
+                  <option key={`start-${hour}`} value={hour}>
+                    {formatHourDisplay(hour)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="filter-field filter-field-small">
+              <span>To</span>
+              <select
+                value={endHour}
+                onChange={(event) => {
+                  const nextEnd = Number(event.target.value);
+                  setEndHour(nextEnd);
+                  if (nextEnd < startHour) {
+                    setStartHour(nextEnd);
+                  }
+                }}
+              >
+                {ALL_TIME_HOURS.map((hour) => (
+                  <option key={`end-${hour}`} value={hour}>
+                    {formatHourDisplay(hour)}
+                  </option>
+                ))}
+              </select>
+            </label>
+
+            <label className="filter-checkbox">
+              <input
+                type="checkbox"
+                checked={hideEmptyLocations}
+                onChange={(event) => setHideEmptyLocations(event.target.checked)}
+              />
+              <span>Hide empty locations</span>
+            </label>
+
+            <button type="button" className="filters-reset-btn" onClick={resetFilters}>
+              Reset filters
+            </button>
+          </div>
+
+          <div className="filter-summary-row" aria-live="polite">
+            {activeFilterChips.length > 0 ? (
+              activeFilterChips.map((chip) => (
+                <button
+                  key={chip.key}
+                  type="button"
+                  className="filter-chip"
+                  onClick={chip.onClear}
+                  title="Click to remove filter"
+                >
+                  <span>{chip.label}</span>
+                  <span className="filter-chip-close" aria-hidden="true">×</span>
+                </button>
+              ))
+            ) : (
+              <span className="filter-summary-muted">No active filters</span>
+            )}
+          </div>
+        </>
+      )}
+
       {/* Table */}
       <div className="weekly-table-wrapper">
         <table className="weekly-court-table">
           <thead>
             <tr>
               <th className="location-column">Location</th>
-              {ALL_TIME_HOURS.map((hour) => (
+              {visibleHours.map((hour) => (
                 <th key={hour} className={`time-header ${shouldHighlightCurrentHour && hour === currentHour ? 'current-hour' : ''}`}>
                   {formatHourDisplay(hour)}
                 </th>
@@ -341,7 +691,7 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={ALL_TIME_HOURS.length + 1} className="table-loading-row">
+                <td colSpan={visibleHours.length + 1} className="table-loading-row">
                   <div className="table-loading-content">
                     <span className="table-loading-spinner" aria-hidden="true"></span>
                     <span>Loading court availability for {formatDateDMY(selectedDate)}...</span>
@@ -354,7 +704,7 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
                   <td className="location-cell">
                     <span className="location-name">{location}</span>
                   </td>
-                  {ALL_TIME_HOURS.map((hour) => {
+                  {visibleHours.map((hour) => {
                     const count = getCountForTimeSlot(location, hour);
                     const availClass = getAvailabilityClass(location, hour);
                     const bookingUrl = count > 0 ? getBookingUrl(location) : null;
@@ -377,8 +727,25 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
               ))
             ) : (
               <tr>
-                <td colSpan={ALL_TIME_HOURS.length + 1} className="empty-row">
-                  No courts available for the selected date(s)
+                <td colSpan={visibleHours.length + 1} className="empty-row">
+                  <div className="empty-row-content">
+                    <p>
+                      {hasActiveFilters
+                        ? 'No courts match your current filters.'
+                        : 'No courts available for the selected date.'}
+                    </p>
+                    <div className="empty-row-actions">
+                      {hasActiveFilters ? (
+                        <button type="button" className="empty-row-btn" onClick={resetFilters}>
+                          Clear filters
+                        </button>
+                      ) : (
+                        <button type="button" className="empty-row-btn" onClick={onRefresh}>
+                          Refresh data
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </td>
               </tr>
             )}

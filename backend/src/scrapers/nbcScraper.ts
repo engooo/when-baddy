@@ -1,12 +1,12 @@
 import * as cheerio from 'cheerio';
 
 const NBC_LOCATIONS = [
-  { id: 1, name: 'Silverwater', address: '2b/172 Silverwater Rd' },
-  { id: 2, name: 'Seven Hills', address: '3/17 Stanton Rd' },
-  { id: 4, name: 'Granville', address: '3F/62 Ferndell St' },
-  { id: 5, name: 'Castle Hill', address: '3/16 Anella Ave' },
-  { id: 6, name: 'Alexandria', address: '8/190 Bourke Road' },
-  { id: 7, name: 'MQ Park', address: '396 Lane Cove Rd' },
+  { id: 1, name: 'Silverwater', address: '2b/172 Silverwater Rd', suburb: 'Silverwater' },
+  { id: 2, name: 'Seven Hills', address: '3/17 Stanton Rd', suburb: 'Seven Hills' },
+  { id: 4, name: 'Granville', address: '3F/62 Ferndell St', suburb: 'Granville' },
+  { id: 5, name: 'Castle Hill', address: '3/16 Anella Ave', suburb: 'Castle Hill' },
+  { id: 6, name: 'Alexandria', address: '8/190 Bourke Road', suburb: 'Alexandria' },
+  { id: 7, name: 'MQ Park', address: '396 Lane Cove Rd', suburb: 'Lane Cove' },
 ];
 
 const BASE_URL = 'https://nbc.yepbooking.com.au';
@@ -49,6 +49,11 @@ function parseHtml(html: string, locationId: number) {
   
   console.log(`[DEBUG] Found ${laneRows.length} rows in schemaLaneTable`);
   
+  // Debug: log first few rows to see structure
+  laneRows.slice(0, 3).each((idx, elem) => {
+    console.log(`  Row ${idx}: class="${$(elem).attr('class')}", text starts with: "${$(elem).text().slice(0, 30)}"`);
+  });
+  
   laneRows.each((index, element) => {
     const $row = $(element);
     // Skip special rows (hidden, times, prices)
@@ -68,7 +73,7 @@ function parseHtml(html: string, locationId: number) {
     }
   });
   
-  console.log(`[DEBUG] Extracted ${courtNames.length} court names:`, courtNames.slice(0, 5));
+  console.log(`[DEBUG] Extracted ${courtNames.length} court names:`, courtNames.slice(0, 10));
 
   // --- Extract time slots from second table header ---
   const timeSlots: string[] = [];
@@ -106,10 +111,14 @@ function parseHtml(html: string, locationId: number) {
       return;
     }
 
-    if (courtIndex >= courtNames.length) return;
+    if (courtIndex >= courtNames.length) {
+      console.log(`[DEBUG] Skipping body row ${_rowIndex}: courtIndex ${courtIndex} >= courtNames.length ${courtNames.length}`);
+      return;
+    }
 
     const cells = $row.find('td');
     let availableCount = 0;
+    let totalCellsChecked = 0;
 
     cells.each((cellIndex, cellElement) => {
       const $cell = $(cellElement);
@@ -141,23 +150,22 @@ function parseHtml(html: string, locationId: number) {
         price = parseInt(priceMatch[1]);
       }
 
-      // Only include available slots, or all slots if debugging
+        // Only include available slots
       if (status === 'available') {
         availableCount++;
-        courtData[courtIndex].availability.push({ timeSlot, status, price });
+          courtData[courtIndex].availability.push({ timeSlot, status, price });
       }
     });
     
-    if (availableCount > 0 && courtIndex < 2) {
-      console.log(`[DEBUG] Court ${courtIndex} (${courtNames[courtIndex]}): found ${availableCount} available slots`);
-    }
+      console.log(`[DEBUG] Court ${courtIndex} (${courtNames[courtIndex] || 'UNKNOWN'}): found ${availableCount} available slots`);
     courtIndex++;
   });
 
+    console.log(`[DEBUG] Final result: ${courtData.length} courts, ${courtData.reduce((sum, c) => sum + c.availability.length, 0)} available slots`);
   return courtData;
 }
 
-async function scrapeNBCLocation(locationId: number, locationName: string, address: string, date: { day: number; month: number; year: number }) {
+async function scrapeNBCLocation(locationId: number, locationName: string, address: string, suburb: string, date: { day: number; month: number; year: number }) {
   try {
     const html = await fetchLocationHtml(locationId, date);
 
@@ -173,7 +181,7 @@ async function scrapeNBCLocation(locationId: number, locationName: string, addre
       console.warn(`⚠️  No courts parsed for ${locationName} — HTML structure may have changed`);
     }
 
-    return { locationId: `${locationId}`, locationName, address, courts };
+    return { locationId: `${locationId}`, locationName, address, suburb, courts };
   } catch (error) {
     console.error(`Error scraping ${locationName}:`, error);
     return null;
@@ -189,7 +197,7 @@ export async function scrapeNBCBadminton(date?: { day: number; month: number; ye
 
   // Fetch all 6 locations in parallel — safe since we use fetch() not a shared browser page
   const locations = await Promise.all(
-    NBC_LOCATIONS.map((loc) => scrapeNBCLocation(loc.id, loc.name, loc.address, d))
+    NBC_LOCATIONS.map((loc) => scrapeNBCLocation(loc.id, loc.name, loc.address, loc.suburb, d))
   );
 
   return {

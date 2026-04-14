@@ -14,20 +14,22 @@ export interface Location {
   locationId: string;
   locationName: string;
   address: string;
+  suburb: string;
   courts: Court[];
 }
 
 export interface CourtData {
-  club: 'alpha' | 'nbc';
+  club: 'alpha' | 'nbc' | 'pro1' | 'roketto';
   date: string; // YYYY-MM-DD
   locations: Location[];
   scrapedAt: string; // ISO timestamp
 }
 
 export interface AggregatedCourt {
-  club: 'alpha' | 'nbc';
+  club: 'alpha' | 'nbc' | 'pro1' | 'roketto';
   location: string;
   locationId: string;
+  suburb: string;
   courtName: string;
   courtId: string;
   timeSlot: string;
