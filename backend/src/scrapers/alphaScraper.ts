@@ -6,26 +6,30 @@ const ALPHA_LOCATIONS = [
   { id: 1, name: 'Slough',  address: '2 Slough Avenue, Silverwater NSW 2128',    suburb: 'Silverwater',  courts: 13 },
 ];
 
+const FOCUS_ALPHA_LOCATION: string | null = null;
+
 const BASE_URL = 'https://alphabadminton.yepbooking.com.au';
 
 async function fetchLocationHtml(locationId: number, date: { day: number; month: number; year: number }): Promise<string> {
   const params = new URLSearchParams({
-    day:          date.day.toString(),
-    month:        date.month.toString(),
-    year:         date.year.toString(),
-    id_sport:     locationId.toString(),
-    event:        'pageLoad',
-    tab_type:     'normal',
-    timetableWidth: '780',
+    id_sport: locationId.toString(),
+    day: date.day.toString(),
+    month: date.month.toString(),
+    year: date.year.toString(),
+    event: 'init',
+    timetableWidth: '778',
   });
 
-  const res = await fetch(`${BASE_URL}/ajax/ajax.schema.php?${params}`, {
+  const res = await fetch(`${BASE_URL}/ajax/ajax.schema.php`, {
+    method: 'POST',
     headers: {
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      'Referer':    BASE_URL,
-      'Accept':     'text/html,application/xhtml+xml',
+      'Referer': BASE_URL,
+      'Accept': 'text/html,application/xhtml+xml',
       'X-Requested-With': 'XMLHttpRequest',
+      'Content-Type': 'application/x-www-form-urlencoded',
     },
+    body: params.toString(),
   });
 
   if (!res.ok) throw new Error(`HTTP ${res.status} for location ${locationId}`);
@@ -36,120 +40,125 @@ function parseHtml(html: string, locationId: number) {
   const $ = cheerio.load(html);
   const courtData: { courtId: string; courtName: string; availability: any[] }[] = [];
 
-  // YepBooking has TWO tables:
-  // 1. table.schemaLaneTable - contains court/lane names in row labels
-  // 2. table.schemaIndividual - contains time headers and availability cells
+  // Find the booking table
+  const table = $('table.schema.schemaIndividual').first();
+  if (table.length === 0) {
+    console.log('[DEBUG] No schemaIndividual table found');
+    return courtData;
+  }
 
-  // --- Extract court names from first table (lane labels) ---
-  const courtNames: string[] = [];
-  const laneRows = $('table.schemaLaneTable tbody tr');
-  
-  console.log(`[DEBUG] Found ${laneRows.length} rows in schemaLaneTable`);
-  
-  laneRows.each((index, element) => {
-    const $row = $(element);
-    // Skip special rows (hidden, times, prices)
-    const rowClass = ($row.attr('class') || '').toLowerCase();
-    if (rowClass.includes('hidden') || rowClass.includes('times') || rowClass.includes('prices')) {
-      return;
-    }
-    
-    const courtName = $row.find('td.lineNumber span').text().trim();
-    if (courtName) {
-      courtNames.push(courtName);
-      courtData.push({ 
-        courtId: `${locationId}-${courtNames.length - 1}`, 
-        courtName, 
-        availability: [] 
-      });
+  // Extract all unique court names from the page
+  const courtSet = new Set<string>();
+  $('*').each((i, el) => {
+    const text = $(el).text();
+    const matches = text.match(/Court\s+(\d+)/g);
+    if (matches) {
+      matches.forEach(match => courtSet.add(match));
     }
   });
-  
-  console.log(`[DEBUG] Extracted ${courtNames.length} court names:`, courtNames.slice(0, 5));
 
-  // --- Extract time slots from second table header ---
+  // Sort courts by number
+  const allCourts = Array.from(courtSet).sort((a, b) => {
+    const aNum = parseInt(a.match(/\d+/)![0]);
+    const bNum = parseInt(b.match(/\d+/)![0]);
+    return aNum - bNum;
+  });
+
+  console.log(`[DEBUG] Extracted ${allCourts.length} unique courts:`, allCourts.slice(0, 5));
+
+  // Extract time slots from thead (second row, starting at cell index 1)
+  const theadRows = table.find('thead tr');
   const timeSlots: string[] = [];
-  const timeRow = $('table.schemaIndividual thead tr.times');
-  timeRow.find('td').each((index, element) => {
-    const time = $(element).text().trim();
-    if (time) {
-      timeSlots.push(time);
-    }
-  });
   
-  console.log(`[DEBUG] Extracted ${timeSlots.length} time slots:`, timeSlots);
-
-  // --- Extract availability from second table body ---
-  const bodyRows = $('table.schemaIndividual tbody tr');
-  const prices: { [key: number]: number } = {};
-  
-  // Extract prices from the prices row first
-  const pricesRow = $('table.schemaIndividual tbody tr.prices');
-  pricesRow.find('td').each((index, element) => {
-    const priceText = $(element).text().trim();
-    const priceMatch = priceText.match(/\$(\d+)/);
-    if (priceMatch) {
-      prices[index] = parseInt(priceMatch[1]);
-    }
-  });
-
-  let courtIndex = 0;
-  bodyRows.each((_rowIndex, rowElement) => {
-    const $row = $(rowElement);
-    
-    // Skip special rows
-    const rowClass = ($row.attr('class') || '').toLowerCase();
-    if (rowClass.includes('hidden') || rowClass.includes('times') || rowClass.includes('prices')) {
-      return;
-    }
-
-    if (courtIndex >= courtNames.length) return;
-
-    const cells = $row.find('td');
-    let availableCount = 0;
-
-    cells.each((cellIndex, cellElement) => {
-      const $cell = $(cellElement);
-      const cellClass = ($cell.attr('class') || '').toLowerCase();
-      
-      // Skip if cell index exceeds time slots
-      if (cellIndex >= timeSlots.length) return;
-
-      const timeSlot = timeSlots[cellIndex];
-      const cellTitle = $cell.attr('title') || '';
-
-      // Determine availability status
-      let status: 'available' | 'booked' | 'past' = 'booked';
-      if (cellClass.includes('empty') || $cell.find('a').length > 0) {
-        status = 'available';
-      } else if (cellClass.includes('old')) {
-        status = 'past';
-      } else if (cellClass.includes('booked')) {
-        status = 'booked';
-      }
-
-      // Skip past times
-      if (status === 'past') return;
-
-      // Extract price from title attribute or prices row
-      let price = prices[cellIndex] || 0;
-      const priceMatch = cellTitle.match(/\$(\d+)/);
-      if (priceMatch) {
-        price = parseInt(priceMatch[1]);
-      }
-
-      // Only include available slots, or all slots if debugging
-      if (status === 'available') {
-        availableCount++;
-        courtData[courtIndex].availability.push({ timeSlot, status, price });
+  if (theadRows.length >= 2) {
+    const timeHeaderRow = theadRows.eq(1);
+    timeHeaderRow.find('td, th').each((index, element) => {
+      if (index > 0) {  // Skip first cell (court name column)
+        const time = $(element).text().trim();
+        if (time && time.match(/\d+:\d+[ap]m/i)) {
+          timeSlots.push(time);
+        }
       }
     });
+  }
+
+  console.log(`[DEBUG] Extracted ${timeSlots.length} time slots:`, timeSlots.slice(0, 5));
+
+  // Process court data from tbody
+  const rows = table.find('tbody tr');
+  console.log(`[DEBUG] Found ${rows.length} court rows in tbody`);
+
+  // Price row typically has class "prices" and one value per booking column.
+  const priceBySlotIndex: number[] = [];
+  const priceRow = rows.filter((_, row) => (($(row).attr('class') || '').toLowerCase().includes('prices'))).first();
+  if (priceRow.length > 0) {
+    priceRow.find('td').each((idx, cell) => {
+      const text = $(cell).text().trim();
+      const m = text.match(/^\$(\d+(?:\.\d+)?)$/);
+      if (m) {
+        priceBySlotIndex[idx] = Number(m[1]);
+      }
+    });
+    console.log(`[DEBUG] Extracted ${priceBySlotIndex.filter((p) => typeof p === 'number').length} price cells`);
+  }
+
+  rows.each((rowIdx, row) => {
+    const $row = $(row);
+    const cells = $row.find('td');
+
+    if (cells.length === 0) return;
+
+    // Skip if this row has no booking cells (e.g., price row or footer)
+    const hasBookingOrOld = cells.toArray().some(cell => {
+      const cls = $(cell).attr('class') || '';
+      return cls.includes('booked') || cls.includes('old') || cls.includes('empty');
+    });
     
-    if (availableCount > 0 && courtIndex < 2) {
-      console.log(`[DEBUG] Court ${courtIndex} (${courtNames[courtIndex]}): found ${availableCount} available slots`);
+    if (!hasBookingOrOld) {
+      console.log(`[DEBUG] Skipping row ${rowIdx} (no booking cells)`);
+      return;
     }
-    courtIndex++;
+
+    // Get court name from the extracted courts list
+    if (rowIdx >= allCourts.length) {
+      return;  // More rows than courts - skip
+    }
+
+    const courtName = allCourts[rowIdx];
+    console.log(`[DEBUG] Processing row ${rowIdx}: ${courtName}`);
+
+    // Initialize court data
+    const court = {
+      courtId: `${locationId}-${rowIdx}`,
+      courtName: courtName,
+      availability: [] as any[]
+    };
+
+    // Process availability for each time slot (cells 1 onwards)
+    cells.slice(1).each((cellIdx, cell) => {
+      const $cell = $(cell);
+      const cellClass = ($cell.attr('class') || '').toLowerCase();
+      const anchorClass = ($cell.find('a').attr('class') || '').toLowerCase();
+
+      const hasAvailableSignal = cellClass.includes('empty') || anchorClass.includes('empty');
+      const hasBlockedSignal = cellClass.includes('booked') || cellClass.includes('old') || anchorClass.includes('booked');
+      const isAvailable = hasAvailableSignal && !hasBlockedSignal && cellIdx < timeSlots.length;
+
+      if (isAvailable) {
+        const timeSlot = timeSlots[cellIdx];
+        const slotPrice = priceBySlotIndex[cellIdx] ?? 0;
+        court.availability.push({
+          timeSlot,
+          status: 'available',
+          price: slotPrice,
+        });
+      }
+    });
+
+    courtData.push(court);
   });
+
+  console.log(`[DEBUG] Extracted ${courtData.length} courts with availability`);
 
   return courtData;
 }
@@ -158,16 +167,13 @@ async function scrapeAlphaLocation(locationId: number, locationName: string, add
   try {
     const html = await fetchLocationHtml(locationId, date);
 
-    // --- Debug: log raw HTML first time you run so you can verify structure ---
-    if (process.env.DEBUG_SCRAPER) {
-      console.log(`\n--- Raw HTML for ${locationName} (first 2000 chars) ---`);
-      console.log(html.slice(0, 2000));
-    }
-
     const courts = parseHtml(html, locationId);
 
     if (courts.length === 0) {
-      console.warn(`⚠️  No courts parsed for ${locationName} — HTML structure may have changed`);
+      console.warn(`⚠️  No courts parsed for ${locationName} — could not extract court information`);
+    } else {
+      const totalAvailable = courts.reduce((sum, c) => sum + c.availability.length, 0);
+      console.log(`✅ ${locationName}: ${courts.length} courts, ${totalAvailable} available slots`);
     }
 
     return { locationId: `${locationId}`, locationName, address, suburb, courts };
@@ -184,10 +190,15 @@ export async function scrapeAlphaBadminton(date?: { day: number; month: number; 
     year:  new Date().getFullYear(),
   };
 
-  // Fetch all 3 locations in parallel — safe now since we use fetch() not a shared browser page
-  const locations = await Promise.all(
-    ALPHA_LOCATIONS.map((loc) => scrapeAlphaLocation(loc.id, loc.name, loc.address, loc.suburb, d))
-  );
+  console.log(`\n[DEBUG] Starting scrape for ${d.day}/${d.month}/${d.year}`);
+
+  const targetLocations = FOCUS_ALPHA_LOCATION
+    ? ALPHA_LOCATIONS.filter((loc) => loc.name === FOCUS_ALPHA_LOCATION)
+    : ALPHA_LOCATIONS;
+
+  const locations = (await Promise.all(
+    targetLocations.map((loc) => scrapeAlphaLocation(loc.id, loc.name, loc.address, loc.suburb, d))
+  )).filter(Boolean);
 
   return {
     club: 'alpha',
