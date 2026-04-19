@@ -102,6 +102,12 @@ function parseHtml(html: string, locationId: number) {
     console.log(`[DEBUG] Extracted ${priceBySlotIndex.filter((p) => typeof p === 'number').length} price cells`);
   }
 
+  const extractTimeFromLabel = (raw: string): string | null => {
+    const text = (raw || '').replace(/[–—]/g, '-').toLowerCase();
+    const m = text.match(/(\d{1,2}:\d{2}[ap]m)\s*-\s*\d{1,2}:\d{2}[ap]m/i);
+    return m ? m[1] : null;
+  };
+
   rows.each((rowIdx, row) => {
     const $row = $(row);
     const cells = $row.find('td');
@@ -139,16 +145,17 @@ function parseHtml(html: string, locationId: number) {
       const $cell = $(cell);
       const cellClass = ($cell.attr('class') || '').toLowerCase();
       const anchorClass = ($cell.find('a').attr('class') || '').toLowerCase();
+      const rawLabel = ($cell.find('a').attr('aria-label') || $cell.attr('data-tooltip') || '') as string;
 
       const hasAvailableSignal = cellClass.includes('empty') || anchorClass.includes('empty');
       const hasBlockedSignal = cellClass.includes('booked') || cellClass.includes('old') || anchorClass.includes('booked');
       const isAvailable = hasAvailableSignal && !hasBlockedSignal && cellIdx < timeSlots.length;
 
       if (isAvailable) {
-        const timeSlot = timeSlots[cellIdx];
+        const labelTime = extractTimeFromLabel(rawLabel);
         const slotPrice = priceBySlotIndex[cellIdx] ?? 0;
         court.availability.push({
-          timeSlot,
+          timeSlot: labelTime || timeSlots[cellIdx],
           status: 'available',
           price: slotPrice,
         });
