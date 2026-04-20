@@ -33,6 +33,7 @@
   margin-bottom: 0.75rem;
   font-weight: 900;
   letter-spacing: -1.5px;
+  white-space: nowrap;
 }
 
 .app-header h1 em {
@@ -55,13 +56,13 @@
 .app-header h1 span::after {
   content: '';
   position: absolute;
-  bottom: 10px;
-  left: -5px;
-  right: -5px;
-  height: 8px;
+  bottom: -0.08em;
+  left: 0;
+  right: 0;
+  height: 0.18em;
   background: linear-gradient(135deg, transparent 0%, #4CAF50 20%, #4CAF50 80%, transparent 100%);
   border-radius: 4px;
-  transform: skewY(-2deg);
+  transform: skewY(-1.5deg);
   opacity: 0.8;
   box-shadow: 0 2px 6px rgba(76, 175, 80, 0.2);
 }
@@ -105,4 +106,47 @@
   border-radius: 6px;
   margin-bottom: 1rem;
   border-left: 4px solid #ff6b6b;
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    padding: 2rem 1rem;
+  }
+
+  .app-header h1 {
+    font-size: clamp(2rem, 9vw, 2.8rem);
+    letter-spacing: -1px;
+    margin-bottom: 0.5rem;
+    line-height: 1.05;
+  }
+
+  .app-header h1 span::after {
+    height: 0.16em;
+    bottom: -0.06em;
+  }
+
+  .app-header p {
+    font-size: 0.8rem;
+    letter-spacing: 0.04em;
+  }
+
+  .app-main {
+    padding: 1rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .app-header {
+    padding: 1.6rem 0.8rem;
+  }
+
+  .app-header h1 {
+    font-size: clamp(1.7rem, 10vw, 2.2rem);
+    letter-spacing: -0.8px;
+  }
+
+  .app-header p {
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+  }
 }
