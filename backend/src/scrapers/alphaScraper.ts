@@ -94,7 +94,7 @@ function parseHtml(html: string, locationId: number) {
   if (priceRow.length > 0) {
     priceRow.find('td').each((idx, cell) => {
       const text = $(cell).text().trim();
-      const m = text.match(/^\$(\d+(?:\.\d+)?)$/);
+      const m = text.match(/\$(\d+(?:\.\d+)?)/);
       if (m) {
         priceBySlotIndex[idx] = Number(m[1]);
       }
@@ -102,11 +102,16 @@ function parseHtml(html: string, locationId: number) {
     console.log(`[DEBUG] Extracted ${priceBySlotIndex.filter((p) => typeof p === 'number').length} price cells`);
   }
 
+  // Some Alpha layouts include a leading non-time cell in the price row, some don't.
+  const priceIndexOffset = priceBySlotIndex.length === timeSlots.length + 1 ? 1 : 0;
+
   const extractTimeFromLabel = (raw: string): string | null => {
     const text = (raw || '').replace(/[–—]/g, '-').toLowerCase();
     const m = text.match(/(\d{1,2}:\d{2}[ap]m)\s*-\s*\d{1,2}:\d{2}[ap]m/i);
     return m ? m[1] : null;
   };
+
+  const normalizeTime = (raw: string): string => raw.trim().toLowerCase();
 
   rows.each((rowIdx, row) => {
     const $row = $(row);
@@ -153,9 +158,21 @@ function parseHtml(html: string, locationId: number) {
 
       if (isAvailable) {
         const labelTime = extractTimeFromLabel(rawLabel);
-        const slotPrice = priceBySlotIndex[cellIdx] ?? 0;
+        const finalTimeSlot = labelTime || timeSlots[cellIdx];
+
+        // In some Alpha responses, aria-label time can drift from visual cell index.
+        // Prefer time-label based price lookup when available to keep price/time aligned.
+        let priceSlotIndex = cellIdx;
+        if (labelTime) {
+          const byLabelIndex = timeSlots.findIndex((slot) => normalizeTime(slot) === normalizeTime(labelTime));
+          if (byLabelIndex >= 0) {
+            priceSlotIndex = byLabelIndex;
+          }
+        }
+
+        const slotPrice = priceBySlotIndex[priceSlotIndex + priceIndexOffset] ?? 0;
         court.availability.push({
-          timeSlot: labelTime || timeSlots[cellIdx],
+          timeSlot: finalTimeSlot,
           status: 'available',
           price: slotPrice,
         });
