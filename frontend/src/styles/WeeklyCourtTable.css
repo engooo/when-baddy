@@ -727,12 +727,24 @@
 
   .location-column,
   .location-cell {
-    min-width: 140px;
-    padding: 0.5rem 0.75rem !important;
+    min-width: 112px;
+    max-width: 112px;
+    width: 112px;
+    padding: 0.45rem 0.5rem !important;
   }
 
   .location-name {
-    font-size: 0.85rem;
+    font-size: 0.8rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .location-address {
+    font-size: 0.72rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .day-chip {
@@ -783,13 +795,26 @@
     font-size: 0.75rem;
   }
 
+  .location-column,
   .location-cell {
-    min-width: 110px;
-    padding: 0.5rem 0.5rem !important;
+    min-width: 92px;
+    max-width: 92px;
+    width: 92px;
+    padding: 0.4rem 0.4rem !important;
   }
 
   .location-name {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .location-address {
+    font-size: 0.62rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .table-filters {
