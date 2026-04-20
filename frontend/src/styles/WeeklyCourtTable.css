@@ -250,20 +250,32 @@
 }
 
 .filters-reset-btn {
-  height: 34px;
-  border: 1px solid #d8d8d8;
+  height: 32px;
+  border: 1px solid #d6d6d6;
   background: #fff;
   color: #2f2f2f;
-  border-radius: 5px;
-  padding: 0 0.75rem;
+  border-radius: 6px;
+  padding: 0 0.7rem;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   margin-left: auto;
 }
 
 .filters-reset-btn:hover {
-  border-color: #4CAF50;
-  color: #2e7d32;
+  border-color: #91c794;
+  color: #276b2b;
+}
+
+.filters-reset-btn:focus,
+.filters-reset-btn:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.filters-reset-btn:active {
+  outline: none;
+  box-shadow: none;
 }
 
 .filter-summary-row {

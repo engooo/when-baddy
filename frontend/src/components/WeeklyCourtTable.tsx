@@ -103,7 +103,7 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
   const initialFilters = useMemo(() => {
     if (typeof window === 'undefined') {
       return {
-        selectedSuburbs: ['Silverwater', 'Auburn', 'Lidcombe', 'Bankstown'] as string[], // Default suburbs
+        selectedSuburbs: [] as string[],
         fromHour: DEFAULT_START_HOUR,
         toHour: DEFAULT_END_HOUR,
         hideEmpty: true,
@@ -114,7 +114,7 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
     const suburbsParam = params.get('suburbs');
     const selectedSuburbs: string[] = suburbsParam
       ? suburbsParam.split(',').map((s) => s.trim()).filter((s) => s.length > 0)
-      : ['Silverwater', 'Auburn', 'Lidcombe', 'Bankstown']; // Default
+      : [];
 
     const fromParam = parseOptionalHourParam(params.get('from'));
     const toParam = parseOptionalHourParam(params.get('to'));
@@ -507,12 +507,11 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
   const activeFilterChips = useMemo(() => {
     const chips: Array<{ key: string; label: string; onClear: () => void }> = [];
 
-    const defaultSuburbs = ['Silverwater', 'Auburn', 'Lidcombe', 'Bankstown'];
-    if (selectedSuburbs.length !== defaultSuburbs.length || !defaultSuburbs.every((s) => selectedSuburbs.includes(s))) {
+    if (selectedSuburbs.length > 0) {
       chips.push({
         key: 'suburb',
         label: selectedSuburbs.length === 1 ? `${selectedSuburbs[0]}` : `${selectedSuburbs.length} suburbs`,
-        onClear: () => setSelectedSuburbs(defaultSuburbs),
+        onClear: () => setSelectedSuburbs([]),
       });
     }
 
@@ -539,7 +538,7 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
   }, [selectedSuburbs, startHour, endHour, hideEmptyLocations]);
 
   const resetFilters = () => {
-    setSelectedSuburbs(['Silverwater', 'Auburn', 'Lidcombe', 'Bankstown']); // Reset to default suburbs
+    setSelectedSuburbs([]);
     setStartHour(DEFAULT_START_HOUR);
     setEndHour(DEFAULT_END_HOUR);
     setHideEmptyLocations(true);
