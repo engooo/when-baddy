@@ -173,9 +173,11 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
 
     if (!year || !month || !day) return null;
 
-    // locationKey is "Club - LocationName" (e.g. "Alpha - Egerton")
-    // c.location is just "Egerton", so strip the "Club - " prefix before matching
-    const locationName = locationKey.includes(' - ') ? locationKey.split(' - ').slice(1).join(' - ') : locationKey;
+    // locationKey is "Club LocationName" (e.g. "Alpha Auburn")
+    // c.location is just "Auburn", so strip the "Club " prefix before matching
+    const parts = locationKey.split(' ');
+    if (parts.length < 2) return null;
+    const locationName = parts.slice(1).join(' '); // Get everything after the first part (club name)
     const court = courts.find((c) => c.location === locationName);
     if (!court) return null;
 
