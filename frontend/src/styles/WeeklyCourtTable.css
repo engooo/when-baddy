@@ -143,6 +143,14 @@
   min-width: 260px;
 }
 
+.suburb-toggle-sections {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 0.5rem 0.55rem;
+  width: 100%;
+}
+
 .filter-field span {
   font-size: 0.74rem;
   color: #6a6a6a;
@@ -203,7 +211,7 @@
   height: 32px;
   border: 1px solid #d6d6d6;
   border-radius: 999px;
-  padding: 0 0.7rem;
+  padding: 0 0.85rem;
   background: #fff;
   color: #2f2f2f;
   font-size: 0.8rem;
@@ -372,7 +380,7 @@
 
 .location-column {
   text-align: left;
-  min-width: 180px;
+  min-width: 210px;
   background: #f9f9f9 !important;
   padding: 0.65rem 1rem !important;
   font-weight: 600;
@@ -385,16 +393,39 @@
   z-index: 2;
   background: #f9f9f9 !important;
   padding: 0.65rem 1rem !important;
-  text-align: left;
+  text-align: left !important;
+  vertical-align: middle;
   border-right: 1px solid #e0e0e0;
   border-bottom: 1px solid #e0e0e0;
 }
 
 .location-name {
-  color: #4CAF50;
+  color: #1f1f1f;
   font-weight: 600;
   white-space: nowrap;
+  font-size: 1rem;
+  display: block;
+}
+
+.location-address {
+  display: block;
+  font-size: 0.85rem;
+  color: #888;
+  font-weight: 400;
+  white-space: nowrap;
+  margin-top: 0.15rem;
+  cursor: pointer;
+}
+
+.location-address:hover {
+  color: #666;
+}
+
+.modal-address-text {
   font-size: 0.9rem;
+  color: #666;
+  margin: 0.5rem 0 1rem;
+  font-style: italic;
 }
 
 .time-header {
@@ -409,9 +440,38 @@
 .time-header.current-hour {
   background: #fff8d9;
   color: #6b4f00;
-  border-top: 2px solid #f5c542;
-  border-left: 2px solid #f5c542;
-  border-right: 2px solid #f5c542;
+  border-left-color: transparent;
+  border-right-color: transparent;
+  border-top-color: transparent;
+  position: relative;
+  z-index: 3;
+}
+
+.time-header.current-hour::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-left: 3px solid #f5c542;
+  border-right: 3px solid #f5c542;
+  border-top: 3px solid #f5c542;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.time-header.current-hour::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  right: -2px;
+  height: 3px;
+  background: #f5c542;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.weekly-court-table thead .time-header.current-hour + .time-header {
+  border-left-color: transparent;
 }
 
 .availability-cell {
@@ -424,12 +484,38 @@
 }
 
 .availability-cell.current-hour {
-  border-left: 2px solid #f5c542;
-  border-right: 2px solid #f5c542;
+  border-left-color: transparent;
+  border-right-color: transparent;
+  border-top-color: transparent;
+  border-bottom-color: transparent;
+  position: relative;
+  z-index: 1;
+}
+
+.availability-cell.current-hour::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border-left: 3px solid #f5c542;
+  border-right: 3px solid #f5c542;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.weekly-court-table tbody tr:first-child .availability-cell.current-hour::after {
+  border-top: 3px solid #f5c542;
+}
+
+.weekly-court-table tbody .availability-cell.current-hour + .availability-cell {
+  border-left-color: transparent;
 }
 
 .weekly-court-table tbody tr:last-child .availability-cell.current-hour {
-  border-bottom: 2px solid #f5c542;
+  position: relative;
+}
+
+.weekly-court-table tbody tr:last-child .availability-cell.current-hour::after {
+  border-bottom: 3px solid #f5c542;
 }
 
 .availability-cell.bookable {
@@ -667,6 +753,17 @@
     min-width: 100%;
   }
 
+  .suburb-toggle-sections {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.5rem;
+  }
+
+  .suburb-toggle-sections .toggle-btn {
+    width: 100%;
+    text-align: center;
+  }
+
   .filter-field-small {
     min-width: 105px;
   }
@@ -702,6 +799,10 @@
   .filter-field,
   .filter-field-small {
     min-width: 100%;
+  }
+
+  .suburb-toggle-sections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .toggle-group-scroll {

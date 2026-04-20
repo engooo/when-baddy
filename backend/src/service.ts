@@ -170,6 +170,7 @@ function normalizeData(data: CourtData): AggregatedCourt[] {
           club: data.club,
           location: location.locationName,
           locationId: location.locationId,
+          address: location.address,
           suburb: location.suburb,
           courtName: court.courtName,
           courtId: court.courtId,

@@ -5,7 +5,7 @@ const PRO1_LOCATIONS = [
   {
     id: 'bankstown',
     name: 'Bankstown',
-    address: 'Bankstown NSW',
+    address: '1/361 Milperra Rd, Bankstown Aerodrome NSW 2200',
     suburb: 'Bankstown',
   },
 ];

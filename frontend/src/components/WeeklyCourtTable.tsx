@@ -5,6 +5,7 @@ interface AggregatedCourt {
   club: 'alpha' | 'nbc' | 'pro1' | 'roketto';
   location: string;
   locationId: string;
+  address: string;
   suburb: string;
   courtName: string;
   courtId: string;
@@ -140,6 +141,7 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
   const [endHour, setEndHour] = useState<number>(initialFilters.toHour);
   const [hideEmptyLocations, setHideEmptyLocations] = useState<boolean>(initialFilters.hideEmpty);
   const [isFilterPanelOpen, setIsFilterPanelOpen] = useState<boolean>(false);
+  const [mapsModalInfo, setMapsModalInfo] = useState<{ location: string; address: string } | null>(null);
 
   const toggleSuburb = (suburb: string) => {
     setSelectedSuburbs((prev) => {
@@ -396,7 +398,7 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
             : court.club === 'pro1'
               ? 'Pro1'
               : 'Roketto';
-      const locationKey = `${clubLabel} - ${court.location}`;
+      const locationKey = `${clubLabel} ${court.location}`;
       if (!grouped[locationKey]) {
         grouped[locationKey] = {};
       }
@@ -407,6 +409,23 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
     });
     
     return grouped;
+  }, [filteredCourts]);
+
+  // Map locationKey -> address for display in the location column
+  const locationAddresses = useMemo(() => {
+    const map: { [key: string]: string } = {};
+    filteredCourts.forEach((court) => {
+      const clubLabel =
+        court.club === 'alpha' ? 'Alpha'
+        : court.club === 'nbc' ? 'NBC'
+        : court.club === 'pro1' ? 'Pro1'
+        : 'Roketto';
+      const locationKey = `${clubLabel} ${court.location}`;
+      if (!map[locationKey] && court.address) {
+        map[locationKey] = court.address;
+      }
+    });
+    return map;
   }, [filteredCourts]);
 
   const hasAnyAvailabilityInVisibleRange = (location: string): boolean => {
@@ -702,6 +721,14 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
                 <tr key={location}>
                   <td className="location-cell">
                     <span className="location-name">{location}</span>
+                    {locationAddresses[location] && (
+                      <span 
+                        className="location-address"
+                        onClick={() => setMapsModalInfo({ location, address: locationAddresses[location] })}
+                      >
+                        {locationAddresses[location]}
+                      </span>
+                    )}
                   </td>
                   {visibleHours.map((hour) => {
                     const count = getCountForTimeSlot(location, hour);
@@ -765,6 +792,35 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
               </button>
               <button className="modal-btn modal-btn-confirm" onClick={confirmBooking}>
                 Go To Website
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {mapsModalInfo && (
+        <div className="booking-modal-overlay" onClick={() => setMapsModalInfo(null)}>
+          <div className="booking-modal" onClick={(event) => event.stopPropagation()}>
+            <h3>Open Location in Google Maps?</h3>
+            <p>
+              Open <strong>{mapsModalInfo.location}</strong> in Google Maps?
+            </p>
+            <p className="modal-address-text">{mapsModalInfo.address}</p>
+            <div className="booking-modal-actions">
+              <button className="modal-btn modal-btn-cancel" onClick={() => setMapsModalInfo(null)}>
+                Cancel
+              </button>
+              <button 
+                className="modal-btn modal-btn-confirm" 
+                onClick={() => {
+                  window.open(
+                    `https://www.google.com/maps/search/${encodeURIComponent(mapsModalInfo.address)}`,
+                    '_blank'
+                  );
+                  setMapsModalInfo(null);
+                }}
+              >
+                Open Maps
               </button>
             </div>
           </div>
