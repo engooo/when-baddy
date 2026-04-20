@@ -1,12 +1,12 @@
 import * as cheerio from 'cheerio';
 
 const NBC_LOCATIONS = [
-  { id: 1, name: 'Silverwater', address: '2b/172 Silverwater Rd', suburb: 'Silverwater' },
-  { id: 2, name: 'Seven Hills', address: '3/17 Stanton Rd', suburb: 'Seven Hills' },
-  { id: 4, name: 'Granville', address: '3F/62 Ferndell St', suburb: 'Granville' },
-  { id: 5, name: 'Castle Hill', address: '3/16 Anella Ave', suburb: 'Castle Hill' },
-  { id: 6, name: 'Alexandria', address: '8/190 Bourke Road', suburb: 'Alexandria' },
-  { id: 7, name: 'MQ Park', address: '396 Lane Cove Rd', suburb: 'Lane Cove' },
+  { id: 1, name: 'Silverwater', address: '2b/172 Silverwater Rd, Silverwater NSW 2128', suburb: 'Silverwater' },
+  { id: 2, name: 'Seven Hills', address: '3/17 Stanton Rd, Seven Hills NSW 2147', suburb: 'Seven Hills' },
+  { id: 4, name: 'Granville', address: '3F/62 Ferndell St, South Granville NSW 2142', suburb: 'Granville' },
+  { id: 5, name: 'Castle Hill', address: '3/16 Anella Ave, Castle Hill NSW 2154', suburb: 'Castle Hill' },
+  { id: 6, name: 'Alexandria', address: '8/190 Bourke Road, Alexandria NSW 2015', suburb: 'Alexandria' },
+  { id: 7, name: 'MQ Park', address: '396 Lane Cove Rd, Macquarie Park NSW 2113', suburb: 'Macquarie Park' },
 ];
 
 const BASE_URL = 'https://nbc.yepbooking.com.au';
