@@ -323,14 +323,75 @@
   line-height: 1;
 }
 
+/* Availability Legend */
+.availability-legend {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 0.8rem;
+  background: #f9fbf9;
+  border: 1px solid #e0e0e0;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.legend-label {
+  font-weight: 600;
+  color: #3f3f3f;
+}
+
+.legend-items {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.legend-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.legend-swatch.none-available {
+  background: #eef0ee;
+}
+
+.legend-swatch.one-available {
+  background: #d97d67;
+}
+
+.legend-swatch.low-available {
+  background: #f2cc82;
+}
+
+.legend-swatch.medium-available {
+  background: #a9d6a8;
+}
+
+.legend-swatch.high-available {
+  background: #82c57c;
+}
+
+.legend-swatch.very-high-available {
+  background: #6fbb69;
+}
+
 /* Table Wrapper */
 .weekly-table-wrapper {
   overflow-x: auto;
   overflow-y: hidden;
-  background: #ffffff;
-  border-radius: 6px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-  border: 1px solid #e0e0e0;
+  background: #f3f4f2;
+  border-radius: 14px;
+  border: none;
   scroll-behavior: smooth;
 }
 
@@ -355,70 +416,79 @@
 
 .weekly-court-table {
   width: 100%;
-  border-collapse: collapse;
-  font-size: 0.85rem;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.92rem;
 }
 
 .weekly-court-table th {
-  background: #f9f9f9;
-  color: #777;
-  font-weight: 700;
-  padding: 0.65rem 0.4rem;
-  border: 1px solid #e0e0e0;
+  background: #f3f4f2;
+  color: #7f8a83;
+  font-weight: 500;
+  padding: 0.72rem 0.35rem;
+  border-bottom: 1px solid #d8ddd8;
   text-align: center;
 }
 
 .weekly-court-table td {
-  padding: 0.65rem 0.4rem;
-  border: 1px solid #e0e0e0;
-  background: #ffffff;
+  padding: 0.52rem 0.28rem;
+  border-bottom: 1px solid #d8ddd8;
+  background: transparent;
   text-align: center;
-  min-height: 50px;
+  min-height: 64px;
   display: table-cell;
   vertical-align: middle;
 }
 
+.weekly-court-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
 .location-column {
-  text-align: left;
-  min-width: 210px;
-  background: #f9f9f9 !important;
-  padding: 0.65rem 1rem !important;
-  font-weight: 600;
-  border-right: 1px solid #e0e0e0;
+  text-align: left !important;
+  min-width: 300px;
+  background: #f3f4f2 !important;
+  padding: 0.7rem 0.3rem 0.7rem 0.8rem !important;
+  font-size: 1.14rem;
+  letter-spacing: 0.14em;
+  color: #5f6b63;
+  font-weight: 700;
 }
 
 .location-cell {
   position: sticky;
   left: 0;
   z-index: 2;
-  background: #f9f9f9 !important;
-  padding: 0.65rem 1rem !important;
+  background: #f3f4f2 !important;
+  padding: 0.7rem 0.8rem !important;
   text-align: left !important;
   vertical-align: middle;
-  border-right: 1px solid #e0e0e0;
-  border-bottom: 1px solid #e0e0e0;
 }
 
 .location-name {
-  color: #1f1f1f;
-  font-weight: 600;
+  color: #162019;
+  font-weight: 700;
   white-space: nowrap;
   font-size: 1rem;
+  line-height: 1.1;
   display: block;
+  margin-bottom: 0.15rem;
 }
 
 .location-address {
   display: block;
-  font-size: 0.85rem;
-  color: #888;
-  font-weight: 400;
+  font-size: 0.82rem;
+  color: #879189;
+  font-weight: 500;
   white-space: nowrap;
-  margin-top: 0.15rem;
+  margin-top: 0;
   cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .location-address:hover {
-  color: #666;
+  color: #5f6b63;
 }
 
 .modal-address-text {
@@ -429,20 +499,36 @@
 }
 
 .time-header {
-  color: #777;
-  font-weight: 600;
-  font-size: 0.8rem;
-  padding: 0.65rem 0.4rem !important;
-  background: #f9f9f9;
-  letter-spacing: 0.3px;
+  color: #7f8a83;
+  font-weight: 700;
+  font-size: 0.98rem;
+  padding: 0.65rem 0.28rem !important;
+  background: #f3f4f2;
+  letter-spacing: 0.02em;
+}
+
+.time-header-hour {
+  display: block;
+}
+
+.time-header-now-wrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  gap: 0.15rem;
+}
+
+.time-header-now {
+  font-size: 0.68rem;
+  letter-spacing: 0.08em;
+  font-weight: 800;
+  color: #5caf5d;
 }
 
 .time-header.current-hour {
-  background: #fff8d9;
-  color: #6b4f00;
-  border-left-color: transparent;
-  border-right-color: transparent;
-  border-top-color: transparent;
+  background: #eef5ee;
+  color: #5caf5d;
   position: relative;
   z-index: 3;
 }
@@ -450,24 +536,16 @@
 .time-header.current-hour::after {
   content: '';
   position: absolute;
-  inset: -2px;
-  border-left: 3px solid #f5c542;
-  border-right: 3px solid #f5c542;
-  border-top: 3px solid #f5c542;
+  inset: -1px;
+  border-left: 2px solid #b5d5b5;
+  border-right: 2px solid #b5d5b5;
+  border-top: 2px solid #b5d5b5;
   pointer-events: none;
   z-index: 2;
 }
 
 .time-header.current-hour::before {
-  content: '';
-  position: absolute;
-  top: -2px;
-  left: -2px;
-  right: -2px;
-  height: 3px;
-  background: #f5c542;
-  pointer-events: none;
-  z-index: 3;
+  display: none;
 }
 
 .weekly-court-table thead .time-header.current-hour + .time-header {
@@ -475,19 +553,14 @@
 }
 
 .availability-cell {
-  padding: 0.65rem 0.4rem !important;
+  padding: 0.42rem 0.22rem !important;
   transition: all 0.15s ease;
   cursor: default;
   position: relative;
-  min-width: 55px;
-  border-bottom: 1px solid #e0e0e0;
+  min-width: 56px;
 }
 
 .availability-cell.current-hour {
-  border-left-color: transparent;
-  border-right-color: transparent;
-  border-top-color: transparent;
-  border-bottom-color: transparent;
   position: relative;
   z-index: 1;
 }
@@ -495,15 +568,15 @@
 .availability-cell.current-hour::after {
   content: '';
   position: absolute;
-  inset: -2px;
-  border-left: 3px solid #f5c542;
-  border-right: 3px solid #f5c542;
+  inset: -1px;
+  border-left: 2px solid #b5d5b5;
+  border-right: 2px solid #b5d5b5;
   pointer-events: none;
   z-index: 2;
 }
 
 .weekly-court-table tbody tr:first-child .availability-cell.current-hour::after {
-  border-top: 3px solid #f5c542;
+  border-top: 2px solid #b5d5b5;
 }
 
 .weekly-court-table tbody .availability-cell.current-hour + .availability-cell {
@@ -515,7 +588,18 @@
 }
 
 .weekly-court-table tbody tr:last-child .availability-cell.current-hour::after {
-  border-bottom: 3px solid #f5c542;
+  border-bottom: 2px solid #b5d5b5;
+}
+
+.availability-card {
+  min-height: 56px;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.16rem;
+  background: #eef0ee;
 }
 
 .availability-cell.bookable {
@@ -523,49 +607,55 @@
 }
 
 .availability-cell.bookable:hover {
-  box-shadow: inset 0 0 0 2px rgba(27, 94, 32, 0.45);
+  transform: translateY(-1px);
 }
 
-.availability-cell.none-available {
-  background: #f5f5f5;
-  color: #7a7a7a;
+.availability-cell.none-available .availability-card {
+  background: #eef0ee;
+  color: #9aa39c;
 }
 
-.availability-cell.low-available {
-  background: #c95d48;
-  color: #ffffff;
+.availability-cell.one-available .availability-card {
+  background: #d97d67;
+  color: #3d2420;
 }
 
-.availability-cell.medium-available {
-  background: #e2a548;
-  color: #ffffff;
+.availability-cell.low-available .availability-card {
+  background: #f2cc82;
+  color: #6e4a12;
 }
 
-.availability-cell.high-available {
-  background: #86b864;
-  color: #ffffff;
+.availability-cell.medium-available .availability-card {
+  background: #a9d6a8;
+  color: #18311f;
 }
 
-.availability-cell.very-high-available {
-  background: #4a9a55;
-  color: #ffffff;
+.availability-cell.high-available .availability-card {
+  background: #82c57c;
+  color: #18311f;
+}
+
+.availability-cell.very-high-available .availability-card {
+  background: #6fbb69;
+  color: #18311f;
 }
 
 .availability-number {
-  font-weight: 700;
-  font-size: 1rem;
+  font-weight: 800;
+  font-size: 0.98rem;
   display: block;
+  line-height: 1;
 }
 
 .availability-price {
   display: block;
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-size: 0.68rem;
+  font-weight: 500;
   background: transparent;
   color: inherit;
   border-radius: 0;
   padding: 0;
-  margin-top: 0.2rem;
+  margin-top: 0.03rem;
   display: inline-block;
 }
 
@@ -708,43 +798,69 @@
 
 @media (max-width: 768px) {
   .weekly-court-table {
-    font-size: 0.75rem;
+    font-size: 0.78rem;
   }
 
   .weekly-court-table th,
   .weekly-court-table td {
-    padding: 0.5rem 0.3rem;
-    min-height: 45px;
+    padding: 0.45rem 0.25rem;
+    min-height: 70px;
   }
 
   .time-header {
-    font-size: 0.7rem;
+    font-size: 0.82rem;
   }
 
   .availability-cell {
     min-width: 50px;
   }
 
+  .availability-card {
+    min-height: 46px;
+    border-radius: 10px;
+  }
+
   .location-column,
   .location-cell {
-    min-width: 112px;
-    max-width: 112px;
-    width: 112px;
+    min-width: 180px;
+    max-width: 180px;
+    width: 180px;
     padding: 0.45rem 0.5rem !important;
   }
 
   .location-name {
-    font-size: 0.8rem;
+    font-size: 0.9rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .location-address {
-    font-size: 0.72rem;
+    font-size: 0.74rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .availability-number {
+    font-size: 0.82rem;
+  }
+
+  .availability-price {
+    font-size: 0.58rem;
+  }
+
+  .legend-items {
+    gap: 0.6rem;
+  }
+
+  .legend-swatch {
+    width: 24px;
+    height: 24px;
+  }
+
+  .legend-item {
+    font-size: 0.82rem;
   }
 
   .day-chip {
@@ -787,7 +903,7 @@
 
 @media (max-width: 480px) {
   .weekly-court-table {
-    font-size: 0.65rem;
+    font-size: 0.68rem;
   }
 
   .day-chip {
@@ -797,21 +913,21 @@
 
   .location-column,
   .location-cell {
-    min-width: 92px;
-    max-width: 92px;
-    width: 92px;
+    min-width: 146px;
+    max-width: 146px;
+    width: 146px;
     padding: 0.4rem 0.4rem !important;
   }
 
   .location-name {
-    font-size: 0.72rem;
+    font-size: 0.82rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
   .location-address {
-    font-size: 0.62rem;
+    font-size: 0.66rem;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -850,16 +966,38 @@
   }
 
   .time-header {
-    font-size: 0.6rem;
+    font-size: 0.72rem;
   }
 
   .availability-cell {
-    min-width: 45px;
-    padding: 0.4rem 0.25rem !important;
+    min-width: 46px;
+    padding: 0.32rem 0.2rem !important;
   }
 
   .availability-number {
-    font-size: 0.8rem;
+    font-size: 0.72rem;
+  }
+
+  .availability-card {
+    min-height: 40px;
+    border-radius: 9px;
+  }
+
+  .availability-price {
+    font-size: 0.52rem;
+  }
+
+  .legend-items {
+    gap: 0.45rem;
+  }
+
+  .legend-swatch {
+    width: 20px;
+    height: 20px;
+  }
+
+  .legend-item {
+    font-size: 0.75rem;
   }
 
   .empty-state {

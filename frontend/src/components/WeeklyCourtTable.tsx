@@ -509,9 +509,10 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
   const getAvailabilityClass = (location: string, hour: number): string => {
     const count = getCountForTimeSlot(location, hour);
     if (count === 0) return 'none-available';
-    if (count === 1) return 'low-available';
-    if (count === 2) return 'medium-available';
-    if (count === 3) return 'high-available';
+    if (count === 1) return 'one-available';
+    if (count <= 4) return 'low-available';
+    if (count <= 8) return 'medium-available';
+    if (count <= 16) return 'high-available';
     return 'very-high-available';
   };
 
@@ -523,6 +524,12 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
     } else {
       return `${hour - 12}:00 PM`;
     }
+  };
+
+  const formatHourCompact = (hour: number): string => {
+    if (hour === 12) return '12 PM';
+    if (hour > 12) return `${hour - 12} PM`;
+    return `${hour} AM`;
   };
 
   const activeFilterChips = useMemo(() => {
@@ -695,15 +702,53 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
         </>
       )}
 
+      {/* Availability Legend */}
+      <div className="availability-legend">
+        <span className="legend-label">Availability:</span>
+        <div className="legend-items">
+          <div className="legend-item">
+            <div className="legend-swatch none-available"></div>
+            <span>None</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-swatch one-available"></div>
+            <span>1 slot</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-swatch low-available"></div>
+            <span>2–4</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-swatch medium-available"></div>
+            <span>5–8</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-swatch high-available"></div>
+            <span>9–16</span>
+          </div>
+          <div className="legend-item">
+            <div className="legend-swatch very-high-available"></div>
+            <span>17+</span>
+          </div>
+        </div>
+      </div>
+
       {/* Table */}
       <div className="weekly-table-wrapper">
         <table className="weekly-court-table">
           <thead>
             <tr>
-              <th className="location-column">Location</th>
+              <th className="location-column">VENUE</th>
               {visibleHours.map((hour) => (
                 <th key={hour} className={`time-header ${shouldHighlightCurrentHour && hour === currentHour ? 'current-hour' : ''}`}>
-                  {formatHourDisplay(hour)}
+                  {shouldHighlightCurrentHour && hour === currentHour ? (
+                    <span className="time-header-now-wrap">
+                      <span className="time-header-now">NOW</span>
+                      <span className="time-header-hour">{formatHourCompact(hour)}</span>
+                    </span>
+                  ) : (
+                    <span className="time-header-hour">{formatHourCompact(hour)}</span>
+                  )}
                 </th>
               ))}
             </tr>
@@ -744,10 +789,12 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
                         title={bookingUrl ? 'Click to open booking page for this day' : ''}
                         onClick={() => handleCellClick(bookingUrl, location)}
                       >
-                        {count > 0 && <span className="availability-number">{count}</span>}
-                        {count > 0 && price !== null && price > 0 && (
-                          <span className="availability-price">${price}</span>
-                        )}
+                        <div className="availability-card">
+                          {count > 0 && <span className="availability-number">{count}</span>}
+                          {count > 0 && price !== null && price > 0 && (
+                            <span className="availability-price">${price}</span>
+                          )}
+                        </div>
                       </td>
                     );
                   })}
