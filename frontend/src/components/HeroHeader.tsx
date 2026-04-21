@@ -17,11 +17,23 @@ export default function HeroHeader() {
       </svg>
 
       <div style={{ position: 'relative', maxWidth: '80rem', margin: '0 auto', padding: '3.7rem 1.5rem', textAlign: 'center' }}>
-        <h1 style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: 900, fontStyle: 'italic', letterSpacing: '-0.02em', margin: 0, lineHeight: 1.1 }}>
+        <h1 style={{ fontSize: 'clamp(2.5rem, 6vw, 4.5rem)', fontWeight: 900, fontStyle: 'italic', letterSpacing: '-0.02em', margin: 0, lineHeight: 1.16, paddingRight: '0.06em', paddingBottom: '0.03em' }}>
           <span style={{ color: '#1a1a1a' }}>WHEN </span>
-          <span style={{ color: '#4CAF50' }}>BADDY?</span>
+          <span
+            style={{
+              background: 'linear-gradient(110deg, #4a9d56 0%, #6fb568 100%)',
+              WebkitBackgroundClip: 'text',
+              backgroundClip: 'text',
+              color: 'transparent',
+              display: 'inline-block',
+              paddingRight: '0.05em',
+              paddingBottom: '0.03em'
+            }}
+          >
+            BADDY?
+          </span>
         </h1>
-        <p style={{ marginTop: '1rem', fontSize: '0.85rem', letterSpacing: '0.25em', textTransform: 'uppercase', color: '#777777', fontWeight: 500, whiteSpace: 'nowrap', margin: '1rem auto 0' }}>
+        <p style={{ marginTop: '1rem', fontSize: 'clamp(0.52rem, 2vw, 0.85rem)', letterSpacing: 'clamp(0.05em, 0.3vw, 0.25em)', textTransform: 'uppercase', color: '#777777', fontWeight: 500, whiteSpace: 'nowrap', margin: '1rem auto 0' }}>
           Find available badminton courts near you
         </p>
       </div>
