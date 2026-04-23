@@ -695,7 +695,6 @@
 
 .time-header-hour {
   display: block;
-  white-space: nowrap;
 }
 
 .time-header-now-wrap {
@@ -988,25 +987,13 @@
     padding: 0.7rem 2rem;
   }
 
-  .filter-top-row {
-    align-items: flex-start;
-    justify-content: flex-start;
-    gap: 0.55rem;
-  }
-
   .filter-primary-controls {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.5rem;
     width: 100%;
-    flex: none;
   }
 
   .property-toggle {
     height: 36px;
-    width: 100%;
-    justify-content: center;
-    padding: 0 0.7rem;
+    padding: 0 0.8rem;
     font-size: 0.84rem;
   }
 
@@ -1032,16 +1019,6 @@
     height: 32px;
   }
 
-  .view-toggle {
-    width: 100%;
-    justify-content: center;
-  }
-
-  .view-toggle-btn {
-    flex: 1;
-    min-width: 0;
-  }
-
   .weekly-court-table {
     font-size: 0.78rem;
   }
@@ -1053,10 +1030,6 @@
   }
 
   .time-header {
-    font-size: 0.82rem;
-  }
-
-  .location-column {
     font-size: 0.82rem;
   }
 
@@ -1162,7 +1135,7 @@
 
 @media (max-width: 480px) {
   .filter-section {
-    padding: 0;
+    padding: 0.62rem 0;
     gap: 0.62rem;
   }
 
@@ -1180,21 +1153,13 @@
   }
 
   .filter-primary-controls {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
     width: 100%;
     gap: 0.45rem;
-  }
-
-  .filter-primary-controls .property-toggle:nth-child(3) {
-    grid-column: 1 / -1;
   }
 
   .property-toggle {
     height: 34px;
     font-size: 0.76rem;
-    width: 100%;
-    justify-content: center;
     padding: 0 0.6rem;
   }
 
@@ -1214,9 +1179,7 @@
   }
 
   .view-toggle {
-    margin-left: 0;
-    width: 100%;
-    justify-content: center;
+    margin-left: auto;
   }
 
   .view-toggle-btn {
@@ -1299,10 +1262,6 @@
   }
 
   .time-header {
-    font-size: 0.72rem;
-  }
-
-  .location-column {
     font-size: 0.72rem;
   }
 
