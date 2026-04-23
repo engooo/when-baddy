@@ -1,5 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import '../styles/WeeklyCourtTable.css';
+import {
+  MapPin,
+  ChevronDown,
+  SlidersHorizontal,
+  LayoutGrid,
+  Map as MapIcon,
+  Moon,
+  Sunrise,
+  DollarSign,
+  Navigation,
+  Zap,
+} from 'lucide-react';
+import '../styles/CourtTable.css';
 
 interface AggregatedCourt {
   club: 'alpha' | 'nbc' | 'pro1' | 'roketto';
@@ -45,7 +57,6 @@ function clampHour(value: number): number {
   if (value > DEFAULT_END_HOUR) return DEFAULT_END_HOUR;
   return value;
 }
-
 function parseOptionalHourParam(raw: string | null): number | null {
   if (raw === null || raw.trim() === '') return null;
   const parsed = Number(raw);
@@ -100,7 +111,7 @@ function getSydneyTodayDate(): Date {
   return new Date(year, month - 1, day);
 }
 
-export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDate, onDateChange, loading, onRefresh }) => {
+export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDate, onDateChange, loading, onRefresh }) => {
   const initialFilters = useMemo(() => {
     if (typeof window === 'undefined') {
       return {
@@ -140,7 +151,11 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
   const [startHour, setStartHour] = useState<number>(initialFilters.fromHour);
   const [endHour, setEndHour] = useState<number>(initialFilters.toHour);
   const [hideEmptyLocations, setHideEmptyLocations] = useState<boolean>(initialFilters.hideEmpty);
-  const [isFilterPanelOpen, setIsFilterPanelOpen] = useState<boolean>(false);
+  const [priceCap, setPriceCap] = useState<number | null>(null);
+  const [isSuburbPanelOpen, setIsSuburbPanelOpen] = useState<boolean>(false);
+  const [isPricePanelOpen, setIsPricePanelOpen] = useState<boolean>(false);
+  const [isTimePanelOpen, setIsTimePanelOpen] = useState<boolean>(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
   const [mapsModalInfo, setMapsModalInfo] = useState<{ location: string; address: string } | null>(null);
 
   const toggleSuburb = (suburb: string) => {
@@ -298,22 +313,16 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
     return date;
   };
 
-  const formatDate = (date: Date): string => {
-    return date.toLocaleDateString('en-AU', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  };
-
-  const formatDateFull = (date: Date): string => {
-    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    return `${days[date.getDay()]}, ${formatDate(date)}`;
-  };
-
   const getDateStr = (offset: number): string => {
     const date = getDateFromOffset(offset);
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+
+  const formatDayMonth = (date: Date): string => {
+    return date.toLocaleDateString('en-AU', {
+      day: 'numeric',
+      month: 'short',
+    });
   };
 
   // Get 7 days starting from today
@@ -324,7 +333,8 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
         return {
           offset: i,
           date,
-          display: formatDateFull(date),
+          title: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : date.toLocaleDateString('en-AU', { weekday: 'short' }),
+          subtitle: formatDayMonth(date),
         };
       }),
     []
@@ -349,9 +359,13 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
         return false;
       }
 
+      if (priceCap !== null && court.price > priceCap) {
+        return false;
+      }
+
       return true;
     });
-  }, [courts, selectedSuburbs, startHour, endHour]);
+  }, [courts, selectedSuburbs, startHour, endHour, priceCap]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -532,50 +546,233 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
     return `${hour} AM`;
   };
 
-  const activeFilterChips = useMemo(() => {
-    const chips: Array<{ key: string; label: string; onClear: () => void }> = [];
-
-    if (selectedSuburbs.length > 0) {
-      chips.push({
-        key: 'suburb',
-        label: selectedSuburbs.length === 1 ? `${selectedSuburbs[0]}` : `${selectedSuburbs.length} suburbs`,
-        onClear: () => setSelectedSuburbs([]),
-      });
-    }
-
-    if (startHour !== DEFAULT_START_HOUR || endHour !== DEFAULT_END_HOUR) {
-      chips.push({
-        key: 'time',
-        label: `Time: ${formatHourDisplay(startHour)} - ${formatHourDisplay(endHour)}`,
-        onClear: () => {
-          setStartHour(DEFAULT_START_HOUR);
-          setEndHour(DEFAULT_END_HOUR);
-        },
-      });
-    }
-
-    if (!hideEmptyLocations) {
-      chips.push({
-        key: 'empty',
-        label: 'Showing empty locations',
-        onClear: () => setHideEmptyLocations(true),
-      });
-    }
-
-    return chips;
-  }, [selectedSuburbs, startHour, endHour, hideEmptyLocations]);
-
   const resetFilters = () => {
     setSelectedSuburbs([]);
     setStartHour(DEFAULT_START_HOUR);
     setEndHour(DEFAULT_END_HOUR);
     setHideEmptyLocations(true);
+    setPriceCap(null);
   };
 
-  const hasActiveFilters = activeFilterChips.length > 0;
+  const hasActiveFilters =
+    selectedSuburbs.length > 0 ||
+    startHour !== DEFAULT_START_HOUR ||
+    endHour !== DEFAULT_END_HOUR ||
+    priceCap !== null ||
+    !hideEmptyLocations;
+
+  const isTonightActive = startHour === 18 && endHour === 22;
+  const isTomorrowMorningActive = startHour === 10 && endHour === 12;
+  const isAnytimeActive = startHour === DEFAULT_START_HOUR && endHour === DEFAULT_END_HOUR;
+
+  const suburbToggleLabel = selectedSuburbs.length === 0
+    ? 'All suburbs'
+    : selectedSuburbs.length === 1
+      ? selectedSuburbs[0]
+      : `${selectedSuburbs.length} suburbs`;
+
+  const priceToggleLabel = priceCap === null ? 'Any price' : `Under $${priceCap}`;
+  const timeToggleLabel = isAnytimeActive
+    ? 'Anytime'
+    : `${formatHourCompact(startHour)} - ${formatHourCompact(endHour)}`;
+
+  const openSuburbPanel = () => {
+    setIsSuburbPanelOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setIsPricePanelOpen(false);
+        setIsTimePanelOpen(false);
+      }
+      return next;
+    });
+  };
+
+  const openPricePanel = () => {
+    setIsPricePanelOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setIsSuburbPanelOpen(false);
+        setIsTimePanelOpen(false);
+      }
+      return next;
+    });
+  };
+
+  const openTimePanel = () => {
+    setIsTimePanelOpen((prev) => {
+      const next = !prev;
+      if (next) {
+        setIsSuburbPanelOpen(false);
+        setIsPricePanelOpen(false);
+      }
+      return next;
+    });
+  };
 
   return (
     <div className="weekly-table-container">
+      <section className="filter-section" aria-label="Filters section">
+        <div className="filter-section-inner">
+
+          {/* Top row: filter toggles + view mode */}
+          <div className="filter-top-row">
+            <div className="filter-primary-controls" role="group" aria-label="Primary filters">
+              <button
+                type="button"
+                className={`property-toggle ${selectedSuburbs.length > 0 ? 'active' : ''}`}
+                onClick={openSuburbPanel}
+                aria-expanded={isSuburbPanelOpen}
+                aria-controls="suburb-toggle-panel"
+              >
+                <MapPin className="property-icon" aria-hidden="true" />
+                {suburbToggleLabel}
+                <ChevronDown className="property-chevron" aria-hidden="true" />
+              </button>
+
+              <button
+                type="button"
+                className={`property-toggle ${priceCap !== null || isPricePanelOpen ? 'active' : ''}`}
+                onClick={openPricePanel}
+                aria-expanded={isPricePanelOpen}
+                aria-controls="price-toggle-panel"
+              >
+                <DollarSign className="property-icon" aria-hidden="true" />
+                {priceToggleLabel}
+                <ChevronDown className="property-chevron" aria-hidden="true" />
+              </button>
+
+              <button
+                type="button"
+                className={`property-toggle ${isTimePanelOpen ? 'active' : ''}`}
+                onClick={openTimePanel}
+                aria-expanded={isTimePanelOpen}
+                aria-controls="time-toggle-panel"
+              >
+                <SlidersHorizontal className="property-icon" aria-hidden="true" />
+                {timeToggleLabel}
+                <ChevronDown className="property-chevron" aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="view-toggle" role="group" aria-label="View mode">
+              <button
+                type="button"
+                className={`view-toggle-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                onClick={() => setViewMode('grid')}
+              >
+                <LayoutGrid className="view-icon" aria-hidden="true" />
+                Grid
+              </button>
+              <button
+                type="button"
+                className={`view-toggle-btn ${viewMode === 'map' ? 'active' : ''}`}
+                onClick={() => setViewMode('map')}
+              >
+                <MapIcon className="view-icon" aria-hidden="true" />
+                Map
+              </button>
+            </div>
+          </div>
+
+          {/* Dropdown panels — rendered directly below top row */}
+          {isSuburbPanelOpen && (
+            <div id="suburb-toggle-panel" className="table-filters" role="group" aria-label="Suburb filters">
+              <div className="filter-field filter-toggle-field">
+                <span>Suburbs</span>
+                <div className="suburb-toggle-sections" role="group" aria-label="Suburb filters">
+                  {allSuburbsInCourts.map((suburb) => (
+                    <button
+                      key={suburb}
+                      type="button"
+                      className={`toggle-btn ${selectedSuburbs.includes(suburb) ? 'active' : ''}`}
+                      onClick={() => toggleSuburb(suburb)}
+                    >
+                      {suburb}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <button type="button" className="filters-reset-btn" onClick={resetFilters}>
+                Reset filters
+              </button>
+            </div>
+          )}
+
+          {isPricePanelOpen && (
+            <div id="price-toggle-panel" className="table-filters" role="group" aria-label="Price filters">
+              <div className="filter-field filter-toggle-field">
+                <span>Price range</span>
+                <div className="suburb-toggle-sections" role="group" aria-label="Price options">
+                  <button
+                    type="button"
+                    className={`toggle-btn ${priceCap === null ? 'active' : ''}`}
+                    onClick={() => setPriceCap(null)}
+                  >
+                    Any price
+                  </button>
+                  <button
+                    type="button"
+                    className={`toggle-btn ${priceCap === 30 ? 'active' : ''}`}
+                    onClick={() => setPriceCap(30)}
+                  >
+                    Under $30
+                  </button>
+                  <button
+                    type="button"
+                    className={`toggle-btn ${priceCap === 40 ? 'active' : ''}`}
+                    onClick={() => setPriceCap(40)}
+                  >
+                    Under $40
+                  </button>
+                </div>
+              </div>
+              <button type="button" className="filters-reset-btn" onClick={resetFilters}>
+                Reset filters
+              </button>
+            </div>
+          )}
+
+          {isTimePanelOpen && (
+            <div id="time-toggle-panel" className="table-filters" role="group" aria-label="Time filters">
+              <label className="filter-field filter-field-small">
+                <span>From</span>
+                <select
+                  value={startHour}
+                  onChange={(event) => {
+                    const nextStart = Number(event.target.value);
+                    setStartHour(nextStart);
+                    if (nextStart > endHour) setEndHour(nextStart);
+                  }}
+                >
+                  {ALL_TIME_HOURS.map((hour) => (
+                    <option key={`start-${hour}`} value={hour}>{formatHourDisplay(hour)}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="filter-field filter-field-small">
+                <span>To</span>
+                <select
+                  value={endHour}
+                  onChange={(event) => {
+                    const nextEnd = Number(event.target.value);
+                    setEndHour(nextEnd);
+                    if (nextEnd < startHour) setStartHour(nextEnd);
+                  }}
+                >
+                  {ALL_TIME_HOURS.map((hour) => (
+                    <option key={`end-${hour}`} value={hour}>{formatHourDisplay(hour)}</option>
+                  ))}
+                </select>
+              </label>
+              <button type="button" className="filters-reset-btn" onClick={resetFilters}>
+                Reset filters
+              </button>
+            </div>
+          )}
+
+        </div>
+      </section>
+
       {/* Day Selector */}
       <div className="day-selector">
         {weekDays.map((day) => (
@@ -584,7 +781,8 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
             className={`day-chip ${getDateStr(day.offset) === selectedDate ? 'selected' : ''}`}
             onClick={() => toggleDateSelection(day.offset)}
           >
-            {day.display}
+            <span className="day-chip-title">{day.title}</span>
+            <span className="day-chip-date">{day.subtitle}</span>
           </button>
         ))}
         <button
@@ -595,112 +793,6 @@ export const WeeklyCourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, sele
           {loading ? 'Loading...' : '↻ Refresh Data'}
         </button>
       </div>
-
-      <div className="filter-panel-header">
-        <button
-          type="button"
-          className="filter-panel-toggle-btn"
-          onClick={() => setIsFilterPanelOpen((prev) => !prev)}
-          aria-expanded={isFilterPanelOpen}
-          aria-controls="court-filters-panel"
-        >
-          {isFilterPanelOpen ? 'Hide filters' : 'Show filters'}
-        </button>
-      </div>
-
-      {isFilterPanelOpen && (
-        <>
-          <div id="court-filters-panel" className="table-filters" role="group" aria-label="Court filters">
-            <div className="filter-field filter-toggle-field">
-              <span>Suburbs</span>
-              <div className="suburb-toggle-sections" role="group" aria-label="Suburb filters">
-                {allSuburbsInCourts.map((suburb) => (
-                  <button
-                    key={suburb}
-                    type="button"
-                    className={`toggle-btn ${selectedSuburbs.includes(suburb) ? 'active' : ''}`}
-                    onClick={() => toggleSuburb(suburb)}
-                  >
-                    {suburb}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <label className="filter-field filter-field-small">
-              <span>From</span>
-              <select
-                value={startHour}
-                onChange={(event) => {
-                  const nextStart = Number(event.target.value);
-                  setStartHour(nextStart);
-                  if (nextStart > endHour) {
-                    setEndHour(nextStart);
-                  }
-                }}
-              >
-                {ALL_TIME_HOURS.map((hour) => (
-                  <option key={`start-${hour}`} value={hour}>
-                    {formatHourDisplay(hour)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="filter-field filter-field-small">
-              <span>To</span>
-              <select
-                value={endHour}
-                onChange={(event) => {
-                  const nextEnd = Number(event.target.value);
-                  setEndHour(nextEnd);
-                  if (nextEnd < startHour) {
-                    setStartHour(nextEnd);
-                  }
-                }}
-              >
-                {ALL_TIME_HOURS.map((hour) => (
-                  <option key={`end-${hour}`} value={hour}>
-                    {formatHourDisplay(hour)}
-                  </option>
-                ))}
-              </select>
-            </label>
-
-            <label className="filter-checkbox">
-              <input
-                type="checkbox"
-                checked={hideEmptyLocations}
-                onChange={(event) => setHideEmptyLocations(event.target.checked)}
-              />
-              <span>Hide empty locations</span>
-            </label>
-
-            <button type="button" className="filters-reset-btn" onClick={resetFilters}>
-              Reset filters
-            </button>
-          </div>
-
-          <div className="filter-summary-row" aria-live="polite">
-            {activeFilterChips.length > 0 ? (
-              activeFilterChips.map((chip) => (
-                <button
-                  key={chip.key}
-                  type="button"
-                  className="filter-chip"
-                  onClick={chip.onClear}
-                  title="Click to remove filter"
-                >
-                  <span>{chip.label}</span>
-                  <span className="filter-chip-close" aria-hidden="true">×</span>
-                </button>
-              ))
-            ) : (
-              <span className="filter-summary-muted">No active filters</span>
-            )}
-          </div>
-        </>
-      )}
 
       {/* Availability Legend */}
       <div className="availability-legend">

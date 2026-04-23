@@ -1,4 +1,4 @@
-import { WeeklyCourtTable } from '../components/WeeklyCourtTable'
+import { CourtTable } from '../components/CourtTable'
 import { AggregatedCourt } from '../types'
 import '../styles/Home.css'
 
@@ -13,7 +13,7 @@ interface HomeProps {
 export default function Home({ courts, loading, onRefresh, selectedDate, onDateChange }: HomeProps) {
   return (
     <div className="home-container">
-      <WeeklyCourtTable
+      <CourtTable
         courts={courts}
         selectedDate={selectedDate}
         onDateChange={onDateChange}

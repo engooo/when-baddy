@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import Home from './pages/Home'
-import HeroHeader from './components/HeroHeader'
+import Header from './components/Header'
 import { AggregatedCourt } from './types'
 import './App.css'
 
@@ -97,7 +97,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <HeroHeader />
+      <Header />
 
       <main className="app-main">
         {error && <div className="error-banner">{error}</div>}

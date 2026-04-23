@@ -1,4 +1,4 @@
-export default function HeroHeader() {
+export default function Header() {
   return (
     <header style={{ position: 'relative', overflow: 'hidden', background: '#ffffff', borderBottom: '1px solid #e0e0e0' }}>
       <svg
@@ -33,7 +33,7 @@ export default function HeroHeader() {
             BADDY?
           </span>
         </h1>
-        <p style={{ marginTop: '1rem', fontSize: 'clamp(0.52rem, 2vw, 0.85rem)', letterSpacing: 'clamp(0.05em, 0.3vw, 0.25em)', textTransform: 'uppercase', color: '#777777', fontWeight: 500, whiteSpace: 'nowrap', margin: '1rem auto 0' }}>
+        <p style={{ marginTop: '1rem', fontSize: 'clamp(0.85rem, 2vw, 1.05rem)', letterSpacing: 'clamp(0.05em, 0.2vw, 0.18em)', textTransform: 'uppercase', color: '#777777', fontWeight: 500, whiteSpace: 'nowrap', margin: '1rem auto 0' }}>
           Find available badminton courts near you
         </p>
       </div>
