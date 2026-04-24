@@ -1132,6 +1132,24 @@
     min-width: 50px;
   }
 
+  .location-name-text {
+    overflow-x: auto;
+    overflow-y: hidden;
+    text-overflow: clip;
+    white-space: nowrap;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .location-name-text::-webkit-scrollbar {
+    height: 3px;
+  }
+
+  .location-name-text::-webkit-scrollbar-thumb {
+    background: rgba(95, 107, 99, 0.35);
+    border-radius: 999px;
+  }
+
   .availability-card {
     min-height: 46px;
     border-radius: 10px;
@@ -1155,9 +1173,21 @@
   }
 
   .location-name-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
+    overflow-x: auto;
+    overflow-y: hidden;
+    text-overflow: clip;
     white-space: nowrap;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .location-name-text::-webkit-scrollbar {
+    height: 3px;
+  }
+
+  .location-name-text::-webkit-scrollbar-thumb {
+    background: rgba(95, 107, 99, 0.35);
+    border-radius: 999px;
   }
 
   .venue-logo {
@@ -1330,6 +1360,23 @@
     max-width: 146px;
     width: 146px;
     padding: 0.4rem 0.4rem !important;
+  }
+
+  .location-name-text {
+    overflow-x: auto;
+    overflow-y: hidden;
+    text-overflow: clip;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .location-name-text::-webkit-scrollbar {
+    height: 3px;
+  }
+
+  .location-name-text::-webkit-scrollbar-thumb {
+    background: rgba(95, 107, 99, 0.35);
+    border-radius: 999px;
   }
 
   .location-name {
