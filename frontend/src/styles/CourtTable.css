@@ -654,11 +654,54 @@
 .location-name {
   color: #162019;
   font-weight: 700;
-  white-space: nowrap;
   font-size: 0.98rem;
   line-height: 1.1;
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
+  min-width: 0;
   margin-bottom: 0.15rem;
+}
+
+.location-name-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.venue-logo {
+  width: 1.06rem;
+  height: 1.06rem;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #ffffff;
+  flex-shrink: 0;
+}
+
+.venue-logo-alpha {
+  background: #4caf50;
+}
+
+.venue-logo-nbc {
+  background: #2f80ed;
+}
+
+.venue-logo-pro1 {
+  background: #f59e0b;
+}
+
+.venue-logo-roketto {
+  background: #d64545;
+}
+
+.venue-logo-default {
+  background: #7f8a83;
 }
 
 .location-address {
@@ -1079,9 +1122,18 @@
 
   .location-name {
     font-size: 0.9rem;
+  }
+
+  .location-name-text {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .venue-logo {
+    width: 0.98rem;
+    height: 0.98rem;
+    font-size: 0.58rem;
   }
 
   .location-address {
@@ -1254,9 +1306,18 @@
 
   .location-name {
     font-size: 0.82rem;
+  }
+
+  .location-name-text {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .venue-logo {
+    width: 0.88rem;
+    height: 0.88rem;
+    font-size: 0.52rem;
   }
 
   .location-address {

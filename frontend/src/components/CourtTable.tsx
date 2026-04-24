@@ -111,6 +111,50 @@ function getSydneyTodayDate(): Date {
   return new Date(year, month - 1, day);
 }
 
+function parseLocationKey(locationKey: string): {
+  locationName: string;
+  badgeText: string;
+  badgeClass: string;
+} {
+  if (locationKey.startsWith('Alpha ')) {
+    return {
+      locationName: locationKey.slice('Alpha '.length),
+      badgeText: 'A',
+      badgeClass: 'venue-logo-alpha',
+    };
+  }
+
+  if (locationKey.startsWith('NBC ')) {
+    return {
+      locationName: locationKey.slice('NBC '.length),
+      badgeText: 'N',
+      badgeClass: 'venue-logo-nbc',
+    };
+  }
+
+  if (locationKey.startsWith('Pro1 ')) {
+    return {
+      locationName: locationKey.slice('Pro1 '.length),
+      badgeText: 'P',
+      badgeClass: 'venue-logo-pro1',
+    };
+  }
+
+  if (locationKey.startsWith('Roketto ')) {
+    return {
+      locationName: locationKey.slice('Roketto '.length),
+      badgeText: 'R',
+      badgeClass: 'venue-logo-roketto',
+    };
+  }
+
+  return {
+    locationName: locationKey,
+    badgeText: 'B',
+    badgeClass: 'venue-logo-default',
+  };
+}
+
 export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDate, onDateChange, loading, onRefresh }) => {
   const initialFilters = useMemo(() => {
     if (typeof window === 'undefined') {
@@ -856,10 +900,17 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
                 </td>
               </tr>
             ) : allLocations.length > 0 ? (
-              allLocations.map((location) => (
+              allLocations.map((location) => {
+                const venue = parseLocationKey(location);
+                return (
                 <tr key={location}>
                   <td className="location-cell">
-                    <span className="location-name">{location}</span>
+                    <span className="location-name">
+                      <span className={`venue-logo ${venue.badgeClass}`} aria-hidden="true">
+                        {venue.badgeText}
+                      </span>
+                      <span className="location-name-text">{venue.locationName}</span>
+                    </span>
                     {locationAddresses[location] && (
                       <span 
                         className="location-address"
@@ -891,7 +942,8 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
                     );
                   })}
                 </tr>
-              ))
+              );
+            })
             ) : (
               <tr>
                 <td colSpan={visibleHours.length + 1} className="empty-row">
