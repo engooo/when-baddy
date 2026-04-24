@@ -482,23 +482,25 @@
 
 .view-toggle-btn {
   height: 32px;
-  min-width: 86px;
+  min-width: 108px;
   border: none;
   border-radius: 10px;
   background: transparent;
   color: #1f2b22;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   font-weight: 600;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
   cursor: pointer;
+  white-space: nowrap;
+  padding: 0 0.6rem;
 }
 
 .view-icon {
-  width: 14px;
-  height: 14px;
+  width: 16px;
+  height: 16px;
   flex-shrink: 0;
 }
 
