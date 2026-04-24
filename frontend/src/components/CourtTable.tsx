@@ -112,13 +112,19 @@ function getSydneyTodayDate(): Date {
 }
 
 function parseLocationKey(locationKey: string): {
+  venueKey: string;
+  venueName: string;
   locationName: string;
+  logoSrc: string | null;
   badgeText: string;
   badgeClass: string;
 } {
   if (locationKey.startsWith('Alpha ')) {
     return {
-      locationName: locationKey.slice('Alpha '.length),
+      venueKey: 'alpha',
+      venueName: 'Alpha Badminton',
+      locationName: locationKey,
+      logoSrc: '/venue-logos/alpha_logo.png',
       badgeText: 'A',
       badgeClass: 'venue-logo-alpha',
     };
@@ -126,7 +132,10 @@ function parseLocationKey(locationKey: string): {
 
   if (locationKey.startsWith('NBC ')) {
     return {
-      locationName: locationKey.slice('NBC '.length),
+      venueKey: 'nbc',
+      venueName: 'NBC',
+      locationName: locationKey,
+      logoSrc: '/venue-logos/nbc_logo.png',
       badgeText: 'N',
       badgeClass: 'venue-logo-nbc',
     };
@@ -134,7 +143,10 @@ function parseLocationKey(locationKey: string): {
 
   if (locationKey.startsWith('Pro1 ')) {
     return {
-      locationName: locationKey.slice('Pro1 '.length),
+      venueKey: 'pro1',
+      venueName: 'Pro1 Badminton',
+      locationName: locationKey,
+      logoSrc: '/venue-logos/pro1_logo.png',
       badgeText: 'P',
       badgeClass: 'venue-logo-pro1',
     };
@@ -142,14 +154,20 @@ function parseLocationKey(locationKey: string): {
 
   if (locationKey.startsWith('Roketto ')) {
     return {
-      locationName: locationKey.slice('Roketto '.length),
+      venueKey: 'roketto',
+      venueName: 'Roketto',
+      locationName: locationKey,
+      logoSrc: '/venue-logos/roketto_logo.png',
       badgeText: 'R',
       badgeClass: 'venue-logo-roketto',
     };
   }
 
   return {
+    venueKey: 'default',
+    venueName: 'Venue',
     locationName: locationKey,
+    logoSrc: null,
     badgeText: 'B',
     badgeClass: 'venue-logo-default',
   };
@@ -201,6 +219,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
   const [isTimePanelOpen, setIsTimePanelOpen] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
   const [mapsModalInfo, setMapsModalInfo] = useState<{ location: string; address: string } | null>(null);
+  const [failedVenueLogos, setFailedVenueLogos] = useState<Record<string, boolean>>({});
 
   const toggleSuburb = (suburb: string) => {
     setSelectedSuburbs((prev) => {
@@ -902,23 +921,42 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
             ) : allLocations.length > 0 ? (
               allLocations.map((location) => {
                 const venue = parseLocationKey(location);
+                const showVenueLogoImage = Boolean(venue.logoSrc) && !failedVenueLogos[venue.venueKey];
                 return (
                 <tr key={location}>
                   <td className="location-cell">
-                    <span className="location-name">
+                    <span className="location-content">
                       <span className={`venue-logo ${venue.badgeClass}`} aria-hidden="true">
-                        {venue.badgeText}
+                        {showVenueLogoImage ? (
+                          <img
+                            className="venue-logo-image"
+                            src={venue.logoSrc ?? undefined}
+                            alt=""
+                            onError={() => {
+                              setFailedVenueLogos((prev) => {
+                                if (prev[venue.venueKey]) return prev;
+                                return { ...prev, [venue.venueKey]: true };
+                              });
+                            }}
+                          />
+                        ) : (
+                          venue.badgeText
+                        )}
                       </span>
-                      <span className="location-name-text">{venue.locationName}</span>
+                      <span className="location-details">
+                        <span className="location-name">
+                          <span className="location-name-text">{venue.locationName}</span>
+                        </span>
+                        {locationAddresses[location] && (
+                          <span
+                            className="location-address"
+                            onClick={() => setMapsModalInfo({ location, address: locationAddresses[location] })}
+                          >
+                            {locationAddresses[location]}
+                          </span>
+                        )}
+                      </span>
                     </span>
-                    {locationAddresses[location] && (
-                      <span 
-                        className="location-address"
-                        onClick={() => setMapsModalInfo({ location, address: locationAddresses[location] })}
-                      >
-                        {locationAddresses[location]}
-                      </span>
-                    )}
                   </td>
                   {visibleHours.map((hour) => {
                     const count = getCountForTimeSlot(location, hour);
