@@ -1,14 +1,11 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   MapPin,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   SlidersHorizontal,
   Moon,
   Sunrise,
-  DollarSign,
-  Navigation,
   Zap,
 } from 'lucide-react';
 import '../styles/CourtTable.css';
@@ -244,10 +241,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
   const [startHour, setStartHour] = useState<number>(initialFilters.fromHour);
   const [endHour, setEndHour] = useState<number>(initialFilters.toHour);
   const [hideEmptyLocations, setHideEmptyLocations] = useState<boolean>(initialFilters.hideEmpty);
-  const [priceCap, setPriceCap] = useState<number | null>(null);
-  const [isSuburbPanelOpen, setIsSuburbPanelOpen] = useState<boolean>(false);
-  const [isPricePanelOpen, setIsPricePanelOpen] = useState<boolean>(false);
-  const [isTimePanelOpen, setIsTimePanelOpen] = useState<boolean>(false);
+  const [isFiltersModalOpen, setIsFiltersModalOpen] = useState<boolean>(false);
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
   const [mapsModalInfo, setMapsModalInfo] = useState<{ location: string; address: string } | null>(null);
   const [failedVenueLogos, setFailedVenueLogos] = useState<Record<string, boolean>>({});
@@ -501,6 +495,21 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
     };
   }, [isCalendarOpen]);
 
+  useEffect(() => {
+    if (!isFiltersModalOpen) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsFiltersModalOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isFiltersModalOpen]);
+
   const calendarCells = useMemo(() => {
     const year = calendarMonth.getFullYear();
     const month = calendarMonth.getMonth();
@@ -565,13 +574,9 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
         return false;
       }
 
-      if (priceCap !== null && court.price > priceCap) {
-        return false;
-      }
-
       return true;
     });
-  }, [courts, selectedSuburbs, startHour, endHour, priceCap]);
+  }, [courts, selectedSuburbs, startHour, endHour]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -757,109 +762,157 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
     setStartHour(DEFAULT_START_HOUR);
     setEndHour(DEFAULT_END_HOUR);
     setHideEmptyLocations(true);
-    setPriceCap(null);
   };
 
   const hasActiveFilters =
     selectedSuburbs.length > 0 ||
     startHour !== DEFAULT_START_HOUR ||
     endHour !== DEFAULT_END_HOUR ||
-    priceCap !== null ||
     !hideEmptyLocations;
 
-  const isTonightActive = startHour === 18 && endHour === 22;
-  const isTomorrowMorningActive = startHour === 10 && endHour === 12;
-  const isAnytimeActive = startHour === DEFAULT_START_HOUR && endHour === DEFAULT_END_HOUR;
-
-  const suburbToggleLabel = selectedSuburbs.length === 0
-    ? 'All suburbs'
-    : selectedSuburbs.length === 1
-      ? selectedSuburbs[0]
-      : `${selectedSuburbs.length} suburbs`;
-
-  const priceToggleLabel = priceCap === null ? 'Any price' : `Under $${priceCap}`;
-  const timeToggleLabel = isAnytimeActive
-    ? 'Anytime'
-    : `${formatHourCompact(startHour)} - ${formatHourCompact(endHour)}`;
-
-  const openSuburbPanel = () => {
-    setIsSuburbPanelOpen((prev) => {
-      const next = !prev;
-      if (next) {
-        setIsPricePanelOpen(false);
-        setIsTimePanelOpen(false);
-      }
-      return next;
-    });
-  };
-
-  const openPricePanel = () => {
-    setIsPricePanelOpen((prev) => {
-      const next = !prev;
-      if (next) {
-        setIsSuburbPanelOpen(false);
-        setIsTimePanelOpen(false);
-      }
-      return next;
-    });
-  };
-
-  const openTimePanel = () => {
-    setIsTimePanelOpen((prev) => {
-      const next = !prev;
-      if (next) {
-        setIsSuburbPanelOpen(false);
-        setIsPricePanelOpen(false);
-      }
-      return next;
-    });
-  };
+  const isMorningActive = startHour === 10 && endHour === 12;
+  const isAfternoonActive = startHour === 12 && endHour === 17;
+  const isNightActive = startHour === 18 && endHour === 22;
 
   return (
     <div className="weekly-table-container">
-      <section className="filter-section" aria-label="Filters section">
+      {isFiltersModalOpen && (
+        <>
+          <div className="filters-modal-backdrop" onClick={() => setIsFiltersModalOpen(false)} />
+          <div className="filters-modal-shell" role="dialog" aria-modal="true" aria-label="Filters">
+            <section className="filter-section filter-section-modal" aria-label="Filters section">
+              <div className="filter-section-inner">
+                <div className="filters-modal-header">
+                  <h3>Filters</h3>
+                  <button
+                    type="button"
+                    className="filters-modal-close"
+                    onClick={() => setIsFiltersModalOpen(false)}
+                    aria-label="Close filters"
+                  >
+                    ×
+                  </button>
+                </div>
+
+                <div className="table-filters filters-modal-content" role="group" aria-label="Filters">
+                  <div className="filter-field filter-toggle-field">
+                    <span>Suburbs</span>
+                    <div className="suburb-pill-list" role="group" aria-label="Suburb filters">
+                      {allSuburbsInCourts.map((suburb) => {
+                        const isActive = selectedSuburbs.includes(suburb);
+                        return (
+                          <button
+                            key={suburb}
+                            type="button"
+                            className={`suburb-pill-btn ${isActive ? 'active' : ''}`}
+                            onClick={() => toggleSuburb(suburb)}
+                            aria-pressed={isActive}
+                          >
+                            {suburb}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  <div className="time-controls-row">
+                    <div className="filter-field filter-time-quick-field">
+                      <span>Quick time</span>
+                      <div className="quick-filters-row" role="group" aria-label="Quick time filters">
+                        <button
+                          type="button"
+                          className={`quick-filter-chip ${isMorningActive ? 'active' : ''}`}
+                          onClick={() => {
+                            setStartHour(10);
+                            setEndHour(12);
+                          }}
+                        >
+                          <Sunrise className="quick-filter-icon" aria-hidden="true" />
+                          Morning
+                        </button>
+                        <button
+                          type="button"
+                          className={`quick-filter-chip ${isAfternoonActive ? 'active' : ''}`}
+                          onClick={() => {
+                            setStartHour(12);
+                            setEndHour(17);
+                          }}
+                        >
+                          <Zap className="quick-filter-icon" aria-hidden="true" />
+                          Afternoon
+                        </button>
+                        <button
+                          type="button"
+                          className={`quick-filter-chip ${isNightActive ? 'active' : ''}`}
+                          onClick={() => {
+                            setStartHour(18);
+                            setEndHour(22);
+                          }}
+                        >
+                          <Moon className="quick-filter-icon" aria-hidden="true" />
+                          Night
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="time-select-row" role="group" aria-label="Time range">
+                      <label className="filter-field filter-field-small stylized-time-field">
+                        <span>From</span>
+                        <select
+                          value={startHour}
+                          onChange={(event) => {
+                            const nextStart = Number(event.target.value);
+                            setStartHour(nextStart);
+                            if (nextStart > endHour) setEndHour(nextStart);
+                          }}
+                        >
+                          {ALL_TIME_HOURS.map((hour) => (
+                            <option key={`start-${hour}`} value={hour}>{formatHourDisplay(hour)}</option>
+                          ))}
+                        </select>
+                      </label>
+
+                      <label className="filter-field filter-field-small stylized-time-field">
+                        <span>To</span>
+                        <select
+                          value={endHour}
+                          onChange={(event) => {
+                            const nextEnd = Number(event.target.value);
+                            setEndHour(nextEnd);
+                            if (nextEnd < startHour) setStartHour(nextEnd);
+                          }}
+                        >
+                          {ALL_TIME_HOURS.map((hour) => (
+                            <option key={`end-${hour}`} value={hour}>{formatHourDisplay(hour)}</option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="filters-modal-actions">
+                    <button type="button" className="filters-reset-btn" onClick={resetFilters}>
+                      Reset
+                    </button>
+                    <button
+                      type="button"
+                      className="filters-apply-btn"
+                      onClick={() => setIsFiltersModalOpen(false)}
+                    >
+                      Done
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </>
+      )}
+
+      <section className="filter-section" aria-label="Sport toggle section">
         <div className="filter-section-inner">
 
-          {/* Top row: filter toggles + view mode */}
-          <div className="filter-top-row">
-            <div className="filter-primary-controls" role="group" aria-label="Primary filters">
-              <button
-                type="button"
-                className={`property-toggle ${selectedSuburbs.length > 0 ? 'active' : ''}`}
-                onClick={openSuburbPanel}
-                aria-expanded={isSuburbPanelOpen}
-                aria-controls="suburb-toggle-panel"
-              >
-                <MapPin className="property-icon" aria-hidden="true" />
-                {suburbToggleLabel}
-                <ChevronDown className="property-chevron" aria-hidden="true" />
-              </button>
-
-              <button
-                type="button"
-                className={`property-toggle ${priceCap !== null || isPricePanelOpen ? 'active' : ''}`}
-                onClick={openPricePanel}
-                aria-expanded={isPricePanelOpen}
-                aria-controls="price-toggle-panel"
-              >
-                <DollarSign className="property-icon" aria-hidden="true" />
-                {priceToggleLabel}
-                <ChevronDown className="property-chevron" aria-hidden="true" />
-              </button>
-
-              <button
-                type="button"
-                className={`property-toggle ${isTimePanelOpen ? 'active' : ''}`}
-                onClick={openTimePanel}
-                aria-expanded={isTimePanelOpen}
-                aria-controls="time-toggle-panel"
-              >
-                <SlidersHorizontal className="property-icon" aria-hidden="true" />
-                {timeToggleLabel}
-                <ChevronDown className="property-chevron" aria-hidden="true" />
-              </button>
-            </div>
-
+          <div className="sport-toggle-row">
             <div className="view-toggle" role="group" aria-label="View mode">
               <button
                 type="button"
@@ -889,103 +942,6 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
               </button>
             </div>
           </div>
-
-          {/* Dropdown panels — rendered directly below top row */}
-          {isSuburbPanelOpen && (
-            <div id="suburb-toggle-panel" className="table-filters" role="group" aria-label="Suburb filters">
-              <div className="filter-field filter-toggle-field">
-                <span>Suburbs</span>
-                <div className="suburb-toggle-sections" role="group" aria-label="Suburb filters">
-                  {allSuburbsInCourts.map((suburb) => (
-                    <button
-                      key={suburb}
-                      type="button"
-                      className={`toggle-btn ${selectedSuburbs.includes(suburb) ? 'active' : ''}`}
-                      onClick={() => toggleSuburb(suburb)}
-                    >
-                      {suburb}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <button type="button" className="filters-reset-btn" onClick={resetFilters}>
-                Reset filters
-              </button>
-            </div>
-          )}
-
-          {isPricePanelOpen && (
-            <div id="price-toggle-panel" className="table-filters" role="group" aria-label="Price filters">
-              <div className="filter-field filter-toggle-field">
-                <span>Price range</span>
-                <div className="suburb-toggle-sections" role="group" aria-label="Price options">
-                  <button
-                    type="button"
-                    className={`toggle-btn ${priceCap === null ? 'active' : ''}`}
-                    onClick={() => setPriceCap(null)}
-                  >
-                    Any price
-                  </button>
-                  <button
-                    type="button"
-                    className={`toggle-btn ${priceCap === 30 ? 'active' : ''}`}
-                    onClick={() => setPriceCap(30)}
-                  >
-                    Under $30
-                  </button>
-                  <button
-                    type="button"
-                    className={`toggle-btn ${priceCap === 40 ? 'active' : ''}`}
-                    onClick={() => setPriceCap(40)}
-                  >
-                    Under $40
-                  </button>
-                </div>
-              </div>
-              <button type="button" className="filters-reset-btn" onClick={resetFilters}>
-                Reset filters
-              </button>
-            </div>
-          )}
-
-          {isTimePanelOpen && (
-            <div id="time-toggle-panel" className="table-filters" role="group" aria-label="Time filters">
-              <label className="filter-field filter-field-small">
-                <span>From</span>
-                <select
-                  value={startHour}
-                  onChange={(event) => {
-                    const nextStart = Number(event.target.value);
-                    setStartHour(nextStart);
-                    if (nextStart > endHour) setEndHour(nextStart);
-                  }}
-                >
-                  {ALL_TIME_HOURS.map((hour) => (
-                    <option key={`start-${hour}`} value={hour}>{formatHourDisplay(hour)}</option>
-                  ))}
-                </select>
-              </label>
-              <label className="filter-field filter-field-small">
-                <span>To</span>
-                <select
-                  value={endHour}
-                  onChange={(event) => {
-                    const nextEnd = Number(event.target.value);
-                    setEndHour(nextEnd);
-                    if (nextEnd < startHour) setStartHour(nextEnd);
-                  }}
-                >
-                  {ALL_TIME_HOURS.map((hour) => (
-                    <option key={`end-${hour}`} value={hour}>{formatHourDisplay(hour)}</option>
-                  ))}
-                </select>
-              </label>
-              <button type="button" className="filters-reset-btn" onClick={resetFilters}>
-                Reset filters
-              </button>
-            </div>
-          )}
-
         </div>
       </section>
 
@@ -998,6 +954,15 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
           onClick={() => setIsCalendarOpen((prev) => !prev)}
         >
           Pick Date
+        </button>
+        <button
+          type="button"
+          className={`open-filters-btn ${hasActiveFilters ? 'active' : ''}`}
+          onClick={() => setIsFiltersModalOpen(true)}
+          aria-label="Open filters"
+        >
+          <SlidersHorizontal aria-hidden="true" />
+          Filters
         </button>
         <button
           className="day-refresh-btn top-refresh-btn"

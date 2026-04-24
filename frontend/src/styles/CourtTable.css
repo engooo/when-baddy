@@ -94,8 +94,43 @@
   margin: 0 auto 0.35rem;
   position: relative;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 0.55rem;
+}
+
+.open-filters-btn {
+  width: auto;
+  min-width: 108px;
+  height: 42px;
+  border-radius: 12px;
+  border: 1px solid #cfd6d1;
+  background: #ffffff;
+  color: #42524a;
+  font-size: 0.86rem;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: background-color 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+
+.open-filters-btn svg {
+  width: 15px;
+  height: 15px;
+}
+
+.open-filters-btn:hover {
+  background: #f7fbf9;
+  border-color: var(--brand-green-soft-border);
+  color: var(--brand-green-ink);
+}
+
+.open-filters-btn.active {
+  background: var(--brand-green-tint);
+  border-color: var(--brand-green-soft-border);
+  color: var(--brand-green-ink);
 }
 
 .pick-date-btn {
@@ -140,6 +175,162 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
+}
+
+.filters-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 20, 14, 0.34);
+  z-index: 42;
+}
+
+.filters-modal-shell {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: min(860px, 94vw);
+  max-height: 86vh;
+  overflow-y: auto;
+  z-index: 43;
+}
+
+.filter-section.filter-section-modal {
+  width: 100%;
+  margin: 0;
+  border: 1px solid #d6ddd7;
+  border-radius: 16px;
+}
+
+.filter-section.filter-section-modal .filter-section-inner {
+  max-width: none;
+  padding: 0.9rem 1rem 1rem;
+  gap: 0.3rem;
+}
+
+.filters-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.55rem;
+}
+
+.filters-modal-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  color: #233129;
+  font-weight: 700;
+}
+
+.filters-modal-close {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid #d4ddd7;
+  background: #f8fbf9;
+  color: #4f6458;
+  font-size: 1.25rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.16s ease;
+}
+
+.filters-modal-close:hover {
+  background: #edf7f2;
+  color: var(--brand-green-ink);
+  border-color: var(--brand-green-soft-border);
+}
+
+.filters-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  align-items: stretch;
+}
+
+.suburb-pill-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 0.2rem;
+}
+
+.suburb-pill-btn {
+  height: 32px;
+  border: 1px solid #d6d6d6;
+  border-radius: 999px;
+  padding: 0 0.85rem;
+  background: #fff;
+  color: #2f2f2f;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.suburb-pill-btn:hover {
+  background: var(--brand-green-soft);
+  border-color: var(--brand-green-soft-border);
+  color: var(--brand-green-ink);
+}
+
+.suburb-pill-btn.active {
+  background: var(--brand-green-gradient);
+  border-color: transparent;
+  color: #fff;
+}
+
+.time-controls-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.time-select-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(136px, 160px));
+  gap: 0.6rem;
+}
+
+.filter-time-quick-field {
+  min-width: 100%;
+}
+
+.stylized-time-field select {
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid #d2ddd6;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbf9 100%);
+  font-weight: 600;
+  color: #2f3d35;
+}
+
+.filters-modal-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.filters-apply-btn {
+  height: 32px;
+  border: 1px solid transparent;
+  background: var(--brand-green-gradient);
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 0 0.8rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.filters-apply-btn:hover {
+  filter: brightness(0.97);
 }
 
 .day-nav-btn-placeholder {
@@ -550,6 +741,21 @@
   padding: 3px;
 }
 
+.sport-toggle-row {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.sport-toggle-row .view-toggle {
+  width: 100%;
+}
+
+.sport-toggle-row .view-toggle-btn {
+  flex: 1;
+  min-width: 0;
+}
+
 .view-toggle-btn {
   height: 32px;
   min-width: 108px;
@@ -651,6 +857,13 @@
   border-radius: 10px;
   padding: 0.85rem 1rem;
   margin-top: 0.5rem;
+}
+
+.table-filters.filters-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  align-items: stretch;
 }
 
 .filter-field {
@@ -790,6 +1003,10 @@
   font-weight: 600;
   cursor: pointer;
   margin-left: auto;
+}
+
+.filters-modal-actions .filters-reset-btn {
+  margin-left: 0;
 }
 
 .filters-reset-btn:hover {
@@ -1401,8 +1618,34 @@
   .calendar-modal-backdrop {
     display: none;
   }
+
+  .date-picker-row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+
   .filter-section-inner {
     padding: 0.7rem 2rem;
+  }
+
+  .filter-section.filter-section-modal .filter-section-inner {
+    padding: 0.85rem 0.85rem 0.95rem;
+  }
+
+  .time-controls-row {
+    grid-template-columns: 1fr;
+  }
+
+  .time-select-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .filters-modal-actions {
+    justify-content: stretch;
+  }
+
+  .filters-modal-actions .filters-reset-btn,
+  .filters-modal-actions .filters-apply-btn {
+    flex: 1;
   }
 
   .filter-top-row {
@@ -1644,6 +1887,12 @@
   .date-picker-row {
     margin: 0 auto 0.12rem;
     gap: 0.4rem;
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .top-refresh-btn {
+    grid-column: 1 / -1;
+    width: 100%;
   }
 
   .day-selector-wrapper {
@@ -1679,10 +1928,29 @@
   }
 
   .pick-date-btn,
+  .open-filters-btn,
   .top-refresh-btn {
     height: 38px;
     font-size: 0.82rem;
     border-radius: 11px;
+  }
+
+  .open-filters-btn {
+    min-width: 98px;
+  }
+
+  .suburb-pill-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .suburb-pill-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .time-select-row {
+    grid-template-columns: 1fr;
   }
 
   .pick-date-btn::before {
