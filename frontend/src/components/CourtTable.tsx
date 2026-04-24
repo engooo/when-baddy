@@ -989,6 +989,85 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
         </div>
       </section>
 
+      <div className="date-picker-row" ref={calendarPopoverRef}>
+        <button
+          type="button"
+          className="pick-date-btn"
+          aria-label="Open calendar"
+          aria-expanded={isCalendarOpen}
+          onClick={() => setIsCalendarOpen((prev) => !prev)}
+        >
+          Pick Date
+        </button>
+        <button
+          className="day-refresh-btn top-refresh-btn"
+          onClick={onRefresh}
+          disabled={loading}
+        >
+          {loading ? 'Loading...' : '↻ Refresh availabilites'}
+        </button>
+        {isCalendarOpen && (
+          <>
+            <div className="calendar-modal-backdrop" onClick={() => setIsCalendarOpen(false)} />
+            <div className="calendar-popover" role="dialog" aria-label="Choose date">
+              <div className="calendar-popover-header">
+                <button
+                  type="button"
+                  className="calendar-month-nav"
+                  onClick={() => shiftCalendarMonth(-1)}
+                  aria-label="Previous month"
+                >
+                  <ChevronLeft aria-hidden="true" />
+                </button>
+                <span className="calendar-month-label">{calendarMonthLabel}</span>
+                <button
+                  type="button"
+                  className="calendar-month-nav"
+                  onClick={() => shiftCalendarMonth(1)}
+                  aria-label="Next month"
+                >
+                  <ChevronRight aria-hidden="true" />
+                </button>
+              </div>
+              <div className="calendar-weekdays" aria-hidden="true">
+                <span>Sun</span>
+                <span>Mon</span>
+                <span>Tue</span>
+                <span>Wed</span>
+                <span>Thu</span>
+                <span>Fri</span>
+                <span>Sat</span>
+              </div>
+              <div className="calendar-grid">
+                {calendarCells.map((cell) => (
+                  <button
+                    key={formatISODate(cell.date)}
+                    type="button"
+                    className={[
+                      'calendar-day-cell',
+                      cell.isCurrentMonth ? '' : 'is-outside-month',
+                      cell.isPast ? 'is-disabled' : '',
+                      cell.isSelected ? 'is-selected' : '',
+                      cell.isToday ? 'is-today' : '',
+                    ].join(' ').trim()}
+                    disabled={cell.isPast}
+                    onClick={() => handleCalendarDateChange(cell.date)}
+                    aria-label={cell.date.toLocaleDateString('en-AU', {
+                      weekday: 'long',
+                      year: 'numeric',
+                      month: 'long',
+                      day: 'numeric',
+                    })}
+                  >
+                    {cell.dayNumber}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
       {/* Day Selector */}
       <div className="day-selector-wrapper">
         <button
@@ -1023,72 +1102,6 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
           >
             <ChevronRight aria-hidden="true" />
           </button>
-          <div className="day-calendar-wrap" ref={calendarPopoverRef}>
-            <button
-              type="button"
-              className="day-calendar-btn"
-              aria-label="Open calendar"
-              aria-expanded={isCalendarOpen}
-              onClick={() => setIsCalendarOpen((prev) => !prev)}
-            />
-            {isCalendarOpen && (
-              <div className="calendar-popover" role="dialog" aria-label="Choose date">
-                <div className="calendar-popover-header">
-                  <button
-                    type="button"
-                    className="calendar-month-nav"
-                    onClick={() => shiftCalendarMonth(-1)}
-                    aria-label="Previous month"
-                  >
-                    <ChevronLeft aria-hidden="true" />
-                  </button>
-                  <span className="calendar-month-label">{calendarMonthLabel}</span>
-                  <button
-                    type="button"
-                    className="calendar-month-nav"
-                    onClick={() => shiftCalendarMonth(1)}
-                    aria-label="Next month"
-                  >
-                    <ChevronRight aria-hidden="true" />
-                  </button>
-                </div>
-                <div className="calendar-weekdays" aria-hidden="true">
-                  <span>Sun</span>
-                  <span>Mon</span>
-                  <span>Tue</span>
-                  <span>Wed</span>
-                  <span>Thu</span>
-                  <span>Fri</span>
-                  <span>Sat</span>
-                </div>
-                <div className="calendar-grid">
-                  {calendarCells.map((cell) => (
-                    <button
-                      key={formatISODate(cell.date)}
-                      type="button"
-                      className={[
-                        'calendar-day-cell',
-                        cell.isCurrentMonth ? '' : 'is-outside-month',
-                        cell.isPast ? 'is-disabled' : '',
-                        cell.isSelected ? 'is-selected' : '',
-                        cell.isToday ? 'is-today' : '',
-                      ].join(' ').trim()}
-                      disabled={cell.isPast}
-                      onClick={() => handleCalendarDateChange(cell.date)}
-                      aria-label={cell.date.toLocaleDateString('en-AU', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    >
-                      {cell.dayNumber}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
@@ -1121,14 +1134,8 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
             <span>17+</span>
           </div>
         </div>
-        <button
-          className="day-refresh-btn"
-          onClick={onRefresh}
-          disabled={loading}
-        >
-          {loading ? 'Loading...' : '↻ Refresh'}
-        </button>
       </div>
+
       <div className="weekly-table-wrapper">
         <table className="weekly-court-table">
           <thead>
@@ -1192,6 +1199,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
                             className="location-address"
                             onClick={() => setMapsModalInfo({ location, address: locationAddresses[location] })}
                           >
+                            <MapPin size={12} className="location-icon" aria-hidden="true" />
                             {locationAddresses[location]}
                           </span>
                         )}
