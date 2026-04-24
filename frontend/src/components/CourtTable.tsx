@@ -1,7 +1,9 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   MapPin,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   SlidersHorizontal,
   LayoutGrid,
   Map as MapIcon,
@@ -109,6 +111,37 @@ function getSydneyTodayDate(): Date {
 
   if (!year || !month || !day) return new Date();
   return new Date(year, month - 1, day);
+}
+
+function formatISODate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+function diffCalendarDays(start: Date, end: Date): number {
+  const startUtc = Date.UTC(start.getFullYear(), start.getMonth(), start.getDate());
+  const endUtc = Date.UTC(end.getFullYear(), end.getMonth(), end.getDate());
+  return Math.round((endUtc - startUtc) / 86_400_000);
+}
+
+function parseISODate(raw: string): Date | null {
+  const match = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const parsed = new Date(year, month - 1, day);
+
+  if (
+    parsed.getFullYear() !== year ||
+    parsed.getMonth() !== month - 1 ||
+    parsed.getDate() !== day
+  ) {
+    return null;
+  }
+
+  parsed.setHours(0, 0, 0, 0);
+  return parsed;
 }
 
 function parseLocationKey(locationKey: string): {
@@ -220,6 +253,12 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
   const [viewMode, setViewMode] = useState<'grid' | 'map'>('grid');
   const [mapsModalInfo, setMapsModalInfo] = useState<{ location: string; address: string } | null>(null);
   const [failedVenueLogos, setFailedVenueLogos] = useState<Record<string, boolean>>({});
+  const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
+  const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
+    const initialDate = parseISODate(selectedDate) ?? getSydneyTodayDate();
+    return new Date(initialDate.getFullYear(), initialDate.getMonth(), 1);
+  });
+  const calendarPopoverRef = useRef<HTMLDivElement | null>(null);
 
   const toggleSuburb = (suburb: string) => {
     setSelectedSuburbs((prev) => {
@@ -368,9 +407,16 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
   const sydneyToday = getSydneyTodayDate();
   const sydneyTodayStr = `${sydneyToday.getFullYear()}-${String(sydneyToday.getMonth() + 1).padStart(2, '0')}-${String(sydneyToday.getDate()).padStart(2, '0')}`;
   const shouldHighlightCurrentHour = selectedDate === sydneyTodayStr;
+  const selectedDateValue = parseISODate(selectedDate) ?? sydneyToday;
+  const daysFromToday = Math.max(0, diffCalendarDays(sydneyToday, selectedDateValue));
+  const displayedWeekOffset = Math.floor(daysFromToday / 7);
+  const displayedWeekStart = new Date(sydneyToday);
+  displayedWeekStart.setDate(displayedWeekStart.getDate() + (displayedWeekOffset * 7));
+  displayedWeekStart.setHours(0, 0, 0, 0);
+  const canShiftToPreviousWeek = displayedWeekOffset > 0;
 
   const getDateFromOffset = (offset: number): Date => {
-    const date = getSydneyTodayDate();
+    const date = new Date(displayedWeekStart);
     date.setDate(date.getDate() + offset);
     date.setHours(0, 0, 0, 0);
     return date;
@@ -393,19 +439,118 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
     () =>
       Array.from({ length: 7 }, (_, i) => {
         const date = getDateFromOffset(i);
+        const dateStr = formatISODate(date);
         return {
           offset: i,
           date,
-          title: i === 0 ? 'Today' : i === 1 ? 'Tomorrow' : date.toLocaleDateString('en-AU', { weekday: 'short' }),
+          dateStr,
+          title: dateStr === sydneyTodayStr ? 'Today' : date.toLocaleDateString('en-AU', { weekday: 'short' }),
           subtitle: formatDayMonth(date),
         };
       }),
-    []
+    [displayedWeekStart, sydneyTodayStr]
   );
 
-  const toggleDateSelection = (offset: number) => {
-    onDateChange(getDateStr(offset));
+  const toggleDateSelection = (dateStr: string) => {
+    onDateChange(dateStr);
   };
+
+  const shiftSelectedDate = (deltaDays: number) => {
+    const baseDate = parseISODate(selectedDate) ?? getSydneyTodayDate();
+    const nextDate = new Date(baseDate);
+    nextDate.setDate(nextDate.getDate() + deltaDays);
+    onDateChange(formatISODate(nextDate));
+  };
+
+  const handleCalendarDateChange = (date: Date) => {
+    if (date < sydneyToday) return;
+    onDateChange(formatISODate(date));
+    setIsCalendarOpen(false);
+  };
+
+  const shiftCalendarMonth = (delta: number) => {
+    setCalendarMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + delta, 1));
+  };
+
+  useEffect(() => {
+    const selected = parseISODate(selectedDate);
+    if (!selected) return;
+    setCalendarMonth(new Date(selected.getFullYear(), selected.getMonth(), 1));
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!isCalendarOpen) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      if (!calendarPopoverRef.current) return;
+      if (!calendarPopoverRef.current.contains(event.target as Node)) {
+        setIsCalendarOpen(false);
+      }
+    };
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsCalendarOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [isCalendarOpen]);
+
+  const calendarCells = useMemo(() => {
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstOfMonth = new Date(year, month, 1);
+    const startWeekday = firstOfMonth.getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const daysInPrevMonth = new Date(year, month, 0).getDate();
+    const selected = parseISODate(selectedDate);
+
+    return Array.from({ length: 42 }, (_, index) => {
+      const offset = index - startWeekday;
+      let cellDate: Date;
+      let isCurrentMonth = true;
+
+      if (offset < 0) {
+        cellDate = new Date(year, month - 1, daysInPrevMonth + offset + 1);
+        isCurrentMonth = false;
+      } else if (offset >= daysInMonth) {
+        cellDate = new Date(year, month + 1, offset - daysInMonth + 1);
+        isCurrentMonth = false;
+      } else {
+        cellDate = new Date(year, month, offset + 1);
+      }
+
+      cellDate.setHours(0, 0, 0, 0);
+      const isPast = cellDate < sydneyToday;
+      const isSelected = selected !== null && formatISODate(cellDate) === formatISODate(selected);
+      const isToday = formatISODate(cellDate) === sydneyTodayStr;
+
+      return {
+        date: cellDate,
+        dayNumber: cellDate.getDate(),
+        isCurrentMonth,
+        isPast,
+        isSelected,
+        isToday,
+      };
+    });
+  }, [calendarMonth, selectedDate, sydneyToday, sydneyTodayStr]);
+
+  const calendarMonthLabel = useMemo(
+    () =>
+      calendarMonth.toLocaleDateString('en-AU', {
+        month: 'long',
+        year: 'numeric',
+      }),
+    [calendarMonth]
+  );
 
   const filteredCourts = useMemo(() => {
     return courts.filter((court) => {
@@ -837,24 +982,106 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
       </section>
 
       {/* Day Selector */}
-      <div className="day-selector">
-        {weekDays.map((day) => (
-          <button
-            key={day.offset}
-            className={`day-chip ${getDateStr(day.offset) === selectedDate ? 'selected' : ''}`}
-            onClick={() => toggleDateSelection(day.offset)}
-          >
-            <span className="day-chip-title">{day.title}</span>
-            <span className="day-chip-date">{day.subtitle}</span>
-          </button>
-        ))}
+      <div className="day-selector-wrapper">
         <button
-          className="day-refresh-btn"
-          onClick={onRefresh}
-          disabled={loading}
+          type="button"
+          className="day-nav-btn"
+          onClick={() => shiftSelectedDate(-7)}
+          aria-label="Previous week"
+          disabled={!canShiftToPreviousWeek}
         >
-          {loading ? 'Loading...' : '↻ Refresh Data'}
+          <ChevronLeft aria-hidden="true" />
         </button>
+
+        <div className="day-selector">
+          {weekDays.map((day) => (
+            <button
+              key={day.dateStr}
+              className={`day-chip ${day.dateStr === selectedDate ? 'selected' : ''}`}
+              onClick={() => toggleDateSelection(day.dateStr)}
+            >
+              <span className="day-chip-title">{day.title}</span>
+              <span className="day-chip-date">{day.subtitle}</span>
+            </button>
+          ))}
+        </div>
+
+        <div className="day-selector-right-nav">
+          <button
+            type="button"
+            className="day-nav-btn"
+            onClick={() => shiftSelectedDate(7)}
+            aria-label="Next week"
+          >
+            <ChevronRight aria-hidden="true" />
+          </button>
+          <div className="day-calendar-wrap" ref={calendarPopoverRef}>
+            <button
+              type="button"
+              className="day-calendar-btn"
+              aria-label="Open calendar"
+              aria-expanded={isCalendarOpen}
+              onClick={() => setIsCalendarOpen((prev) => !prev)}
+            />
+            {isCalendarOpen && (
+              <div className="calendar-popover" role="dialog" aria-label="Choose date">
+                <div className="calendar-popover-header">
+                  <button
+                    type="button"
+                    className="calendar-month-nav"
+                    onClick={() => shiftCalendarMonth(-1)}
+                    aria-label="Previous month"
+                  >
+                    <ChevronLeft aria-hidden="true" />
+                  </button>
+                  <span className="calendar-month-label">{calendarMonthLabel}</span>
+                  <button
+                    type="button"
+                    className="calendar-month-nav"
+                    onClick={() => shiftCalendarMonth(1)}
+                    aria-label="Next month"
+                  >
+                    <ChevronRight aria-hidden="true" />
+                  </button>
+                </div>
+                <div className="calendar-weekdays" aria-hidden="true">
+                  <span>Sun</span>
+                  <span>Mon</span>
+                  <span>Tue</span>
+                  <span>Wed</span>
+                  <span>Thu</span>
+                  <span>Fri</span>
+                  <span>Sat</span>
+                </div>
+                <div className="calendar-grid">
+                  {calendarCells.map((cell) => (
+                    <button
+                      key={formatISODate(cell.date)}
+                      type="button"
+                      className={[
+                        'calendar-day-cell',
+                        cell.isCurrentMonth ? '' : 'is-outside-month',
+                        cell.isPast ? 'is-disabled' : '',
+                        cell.isSelected ? 'is-selected' : '',
+                        cell.isToday ? 'is-today' : '',
+                      ].join(' ').trim()}
+                      disabled={cell.isPast}
+                      onClick={() => handleCalendarDateChange(cell.date)}
+                      aria-label={cell.date.toLocaleDateString('en-AU', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    >
+                      {cell.dayNumber}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Availability Legend */}
@@ -886,9 +1113,14 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
             <span>17+</span>
           </div>
         </div>
+        <button
+          className="day-refresh-btn"
+          onClick={onRefresh}
+          disabled={loading}
+        >
+          {loading ? 'Loading...' : '↻ Refresh'}
+        </button>
       </div>
-
-      {/* Table */}
       <div className="weekly-table-wrapper">
         <table className="weekly-court-table">
           <thead>
