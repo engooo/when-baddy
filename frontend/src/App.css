@@ -6,66 +6,96 @@
   color: #333;
 }
 
-.app-header {
-  background: linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%);
-  color: #333;
-  padding: 3rem 2rem;
-  text-align: center;
-  border-bottom: 3px solid #4CAF50;
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.12);
+/* Hero header */
+.hero-header {
   position: relative;
   overflow: hidden;
+  background: linear-gradient(180deg, #0a9a66 0%, #06815d 100%);
+  min-height: 350px;
+  border-bottom: 0;
 }
 
-.app-header::before {
-  content: '';
+.hero-header-grid {
   position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(to right, transparent, #4CAF50, transparent);
-  opacity: 0.3;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, rgba(203, 246, 232, 0.16) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(203, 246, 232, 0.16) 1px, transparent 1px);
+  background-size: 80px 80px;
+  pointer-events: none;
 }
 
-.app-header h1 {
-  font-size: 3.5rem;
-  margin-bottom: 0.75rem;
+.hero-header-orb {
+  position: absolute;
+  border-radius: 999px;
+  background: rgba(12, 157, 117, 0.55);
+  pointer-events: none;
+}
+
+.hero-header-orb-left {
+  width: 320px;
+  height: 320px;
+  left: -95px;
+  top: 24px;
+}
+
+.hero-header-orb-right {
+  width: 210px;
+  height: 210px;
+  right: -16px;
+  top: -10px;
+}
+
+.hero-header-inner {
+  position: relative;
+  z-index: 1;
+  max-width: 1080px;
+  margin: 0 auto;
+  text-align: center;
+  padding: 7.2rem 1.5rem 8.4rem;
+}
+
+.hero-header-title {
+  margin: 0;
+  font-size: clamp(3rem, 6.4vw, 5.2rem);
+  line-height: 1.03;
   font-weight: 900;
-  letter-spacing: -1.5px;
+  font-style: italic;
+  letter-spacing: -0.03em;
+}
+
+.hero-header-title-main {
+  color: #f2f8f5;
+}
+
+.hero-header-title-accent {
+  color: #8af0c9;
+}
+
+.hero-header-subtitle {
+  margin: 2rem auto 0;
+  color: #abebd7;
+  text-transform: uppercase;
+  letter-spacing: 0.11em;
+  font-size: clamp(0.98rem, 2.2vw, 2.05rem);
+  font-weight: 500;
+  max-width: 100%;
   white-space: nowrap;
 }
 
-.app-header h1 em {
-  font-style: italic;
-  color: #333;
-  font-weight: 900;
-  font-size: 0.9em;
-  letter-spacing: -0.5px;
+.hero-header-wave {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  width: 100%;
+  height: 96px;
+  z-index: 1;
+  pointer-events: none;
 }
 
-.app-header h1 span {
-  color: #4CAF50;
-  font-weight: 900;
-  display: inline-block;
-  transition: transform 0.3s ease, text-shadow 0.3s ease;
-  position: relative;
-}
-
-/* Animated underline effect for "BADDY?" */
-.app-header h1 span:hover {
-  transform: scale(1.05);
-  text-shadow: 0 4px 12px rgba(76, 175, 80, 0.35);
-}
-
-.app-header p {
-  font-size: 0.95rem;
-  color: #777;
-  opacity: 0.8;
-  letter-spacing: 0.05em;
-  text-transform: uppercase;
-  margin: 0;
-  font-weight: 600;
+.hero-header-wave path {
+  fill: #f4f8f6;
 }
 
 .app-main {
@@ -95,20 +125,45 @@
 }
 
 @media (max-width: 768px) {
-  .app-header {
-    padding: 2rem 1rem;
+  .hero-header {
+    min-height: 300px;
   }
 
-  .app-header h1 {
-    font-size: clamp(2rem, 9vw, 2.8rem);
-    letter-spacing: -1px;
-    margin-bottom: 0.5rem;
-    line-height: 1.05;
+  .hero-header-grid {
+    background-size: 64px 64px;
   }
 
-  .app-header p {
-    font-size: 0.8rem;
-    letter-spacing: 0.04em;
+  .hero-header-orb-left {
+    width: 230px;
+    height: 230px;
+    left: -90px;
+    top: 26px;
+  }
+
+  .hero-header-orb-right {
+    width: 160px;
+    height: 160px;
+    right: -36px;
+    top: -20px;
+  }
+
+  .hero-header-inner {
+    padding: 6rem 1rem 6.8rem;
+  }
+
+  .hero-header-title {
+    font-size: clamp(2.4rem, 10vw, 3.8rem);
+  }
+
+  .hero-header-subtitle {
+    margin-top: 1.45rem;
+    letter-spacing: 0.085em;
+    white-space: normal;
+    line-height: 1.2;
+  }
+
+  .hero-header-wave {
+    height: 84px;
   }
 
   .app-main {
@@ -117,17 +172,26 @@
 }
 
 @media (max-width: 480px) {
-  .app-header {
-    padding: 1.6rem 0.8rem;
+  .hero-header {
+    min-height: 250px;
   }
 
-  .app-header h1 {
-    font-size: clamp(1.7rem, 10vw, 2.2rem);
-    letter-spacing: -0.8px;
+  .hero-header-inner {
+    padding: 5.15rem 0.8rem 5.9rem;
   }
 
-  .app-header p {
-    font-size: 0.72rem;
-    letter-spacing: 0.03em;
+  .hero-header-title {
+    font-size: clamp(2rem, 11.2vw, 2.9rem);
+    letter-spacing: -0.02em;
+  }
+
+  .hero-header-subtitle {
+    margin-top: 1.2rem;
+    font-size: 0.95rem;
+    letter-spacing: 0.07em;
+  }
+
+  .hero-header-wave {
+    height: 72px;
   }
 }
