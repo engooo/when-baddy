@@ -1,6 +1,14 @@
-export default function Header() {
+import type { SportMode } from '../types'
+
+interface HeaderProps {
+  sportMode: SportMode
+}
+
+export default function Header({ sportMode }: HeaderProps) {
+  const isPickleball = sportMode === 'map'
+
   return (
-    <header className="hero-header">
+    <header className={`hero-header ${isPickleball ? 'hero-header-pickleball' : ''}`}>
       <div className="hero-header-grid" aria-hidden="true" />
       <div className="hero-header-orb hero-header-orb-left" aria-hidden="true" />
       <div className="hero-header-orb hero-header-orb-right" aria-hidden="true" />
@@ -8,9 +16,11 @@ export default function Header() {
       <div className="hero-header-inner">
         <h1 className="hero-header-title">
           <span className="hero-header-title-main">WHEN</span>{' '}
-          <span className="hero-header-title-accent">BADDY?</span>
+          <span className="hero-header-title-accent">{isPickleball ? 'PICKLE?' : 'BADDY?'}</span>
         </h1>
-        <p className="hero-header-subtitle">FIND AVAILABLE BADMINTON COURTS NEAR YOU</p>
+        <p className="hero-header-subtitle">
+          {isPickleball ? 'FIND PICKLEBALL RUNS, COURTS AND OPEN PLAY NEAR YOU' : 'FIND AVAILABLE BADMINTON COURTS NEAR YOU'}
+        </p>
       </div>
 
       <svg

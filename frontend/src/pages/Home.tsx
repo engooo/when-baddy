@@ -1,5 +1,5 @@
 import { CourtTable } from '../components/CourtTable'
-import { AggregatedCourt } from '../types'
+import type { AggregatedCourt, SportMode } from '../types'
 import '../styles/Home.css'
 
 interface HomeProps {
@@ -8,9 +8,11 @@ interface HomeProps {
   onRefresh: () => void
   selectedDate: string
   onDateChange: (date: string) => void
+  sportMode: SportMode
+  onSportModeChange: (mode: SportMode) => void
 }
 
-export default function Home({ courts, loading, onRefresh, selectedDate, onDateChange }: HomeProps) {
+export default function Home({ courts, loading, onRefresh, selectedDate, onDateChange, sportMode, onSportModeChange }: HomeProps) {
   return (
     <div className="home-container">
       <CourtTable
@@ -19,6 +21,8 @@ export default function Home({ courts, loading, onRefresh, selectedDate, onDateC
         onDateChange={onDateChange}
         loading={loading}
         onRefresh={onRefresh}
+        sportMode={sportMode}
+        onSportModeChange={onSportModeChange}
       />
     </div>
   )

@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import Home from './pages/Home'
 import Header from './components/Header'
-import { AggregatedCourt } from './types'
+import type { AggregatedCourt, SportMode } from './types'
 import './App.css'
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL ?? 'https://when-baddy-api.onrender.com').replace(/\/$/, '')
@@ -32,6 +32,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>(todayStr())
+  const [sportMode, setSportMode] = useState<SportMode>('grid')
   const dateCache = useRef<Map<string, AggregatedCourt[]>>(new Map())
   const latestRequestRef = useRef(0)
 
@@ -97,7 +98,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <Header />
+      <Header sportMode={sportMode} />
 
       <main className="app-main">
         {error && <div className="error-banner">{error}</div>}
@@ -108,11 +109,17 @@ function App() {
           onRefresh={handleRefresh}
           selectedDate={selectedDate}
           onDateChange={handleDateChange}
+          sportMode={sportMode}
+          onSportModeChange={setSportMode}
         />
       </main>
 
       <footer className="app-footer">
-        <p>Aggregating courts from Alpha Badminton, NBC Badminton, Pro1 Badminton & Roketto</p>
+        <p>
+          {sportMode === 'grid'
+            ? 'Aggregating courts from Alpha Badminton, NBC Badminton, Pro1 Badminton & Roketto'
+            : 'Pickleball preview mode — venue coverage and live court feeds are still being expanded'}
+        </p>
       </footer>
     </div>
   )

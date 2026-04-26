@@ -11,3 +11,5 @@ export interface AggregatedCourt {
   price: number;
   date: string;
 }
+
+export type SportMode = 'grid' | 'map';

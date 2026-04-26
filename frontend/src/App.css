@@ -15,6 +15,10 @@
   border-bottom: 0;
 }
 
+.hero-header-pickleball {
+  background: linear-gradient(180deg, #0f8d78 0%, #0a6f66 100%);
+}
+
 .hero-header-grid {
   position: absolute;
   inset: 0;
@@ -30,6 +34,10 @@
   border-radius: 999px;
   background: rgba(12, 157, 117, 0.55);
   pointer-events: none;
+}
+
+.hero-header-pickleball .hero-header-orb {
+  background: rgba(108, 235, 204, 0.18);
 }
 
 .hero-header-orb-left {
@@ -81,6 +89,14 @@
   font-weight: 500;
   max-width: 100%;
   white-space: nowrap;
+}
+
+.hero-header-pickleball .hero-header-title-accent {
+  color: #b8fff0;
+}
+
+.hero-header-pickleball .hero-header-subtitle {
+  color: #c1f4ea;
 }
 
 .hero-header-wave {
