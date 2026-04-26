@@ -236,6 +236,9 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
 
   const [pendingBookingUrl, setPendingBookingUrl] = useState<string | null>(null);
   const [pendingLocation, setPendingLocation] = useState<string>('');
+  const [pendingHour, setPendingHour] = useState<number | null>(null);
+  const [pendingCount, setPendingCount] = useState<number>(0);
+  const [pendingPrice, setPendingPrice] = useState<number | null>(null);
   const [timeTick, setTimeTick] = useState<number>(Date.now());
   const [selectedSuburbs, setSelectedSuburbs] = useState<string[]>(initialFilters.selectedSuburbs);
   const [startHour, setStartHour] = useState<number>(initialFilters.fromHour);
@@ -246,6 +249,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
   const [mapsModalInfo, setMapsModalInfo] = useState<{ location: string; address: string } | null>(null);
   const [failedVenueLogos, setFailedVenueLogos] = useState<Record<string, boolean>>({});
   const [isCalendarOpen, setIsCalendarOpen] = useState<boolean>(false);
+  const [lastUpdateTime, setLastUpdateTime] = useState<Date>(new Date());
   const [calendarMonth, setCalendarMonth] = useState<Date>(() => {
     const initialDate = parseISODate(selectedDate) ?? getSydneyTodayDate();
     return new Date(initialDate.getFullYear(), initialDate.getMonth(), 1);
@@ -350,15 +354,21 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
     return null;
   };
 
-  const handleCellClick = (bookingUrl: string | null, location: string) => {
+  const handleCellClick = (bookingUrl: string | null, location: string, hour?: number, count?: number, price?: number | null) => {
     if (!bookingUrl) return;
     setPendingBookingUrl(bookingUrl);
     setPendingLocation(location);
+    setPendingHour(hour ?? null);
+    setPendingCount(count ?? 0);
+    setPendingPrice(price ?? null);
   };
 
   const closeBookingModal = () => {
     setPendingBookingUrl(null);
     setPendingLocation('');
+    setPendingHour(null);
+    setPendingCount(0);
+    setPendingPrice(null);
   };
 
   const confirmBooking = () => {
@@ -736,9 +746,8 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
     if (count === 0) return 'none-available';
     if (count === 1) return 'one-available';
     if (count <= 4) return 'low-available';
-    if (count <= 8) return 'medium-available';
-    if (count <= 16) return 'high-available';
-    return 'very-high-available';
+    if (count <= 9) return 'medium-available';
+    return 'high-available';
   };
 
   const formatHourDisplay = (hour: number): string => {
@@ -948,15 +957,6 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
       <div className="date-picker-row" ref={calendarPopoverRef}>
         <button
           type="button"
-          className="pick-date-btn"
-          aria-label="Open calendar"
-          aria-expanded={isCalendarOpen}
-          onClick={() => setIsCalendarOpen((prev) => !prev)}
-        >
-          Pick Date
-        </button>
-        <button
-          type="button"
           className={`open-filters-btn ${hasActiveFilters ? 'active' : ''}`}
           onClick={() => setIsFiltersModalOpen(true)}
           aria-label="Open filters"
@@ -965,12 +965,15 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
           Filters
         </button>
         <button
-          className="day-refresh-btn top-refresh-btn"
-          onClick={onRefresh}
-          disabled={loading}
+          type="button"
+          className="pick-date-btn"
+          aria-label="Open calendar"
+          aria-expanded={isCalendarOpen}
+          onClick={() => setIsCalendarOpen((prev) => !prev)}
         >
-          {loading ? 'Loading...' : '↻ Refresh availabilites'}
+          Pick Date
         </button>
+
         {isCalendarOpen && (
           <>
             <div className="calendar-modal-backdrop" onClick={() => setIsCalendarOpen(false)} />
@@ -1070,177 +1073,235 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({ courts, selectedDa
         </div>
       </div>
 
-      {/* Availability Legend */}
-      <div className="availability-legend">
-        <span className="legend-label">Availability:</span>
-        <div className="legend-items">
-          <div className="legend-item">
-            <div className="legend-swatch none-available"></div>
-            <span>None</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-swatch one-available"></div>
-            <span>1 slot</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-swatch low-available"></div>
-            <span>2–4</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-swatch medium-available"></div>
-            <span>5–8</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-swatch high-available"></div>
-            <span>9–16</span>
-          </div>
-          <div className="legend-item">
-            <div className="legend-swatch very-high-available"></div>
-            <span>17+</span>
-          </div>
+      {viewMode === 'map' ? (
+        <div className="empty-state pickleball-coming-soon">
+          <h3>Pickleball Coming Soon</h3>
+          <p>We are working on adding pickleball availability. Please check back soon.</p>
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="table-meta-row">
+            <span className="last-updated">Last updated: {lastUpdateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+            <button
+              className="table-refresh-btn"
+              onClick={() => { onRefresh(); setLastUpdateTime(new Date()); }}
+              disabled={loading}
+              aria-label="Refresh available courts"
+            >
+              {loading ? '⟳ Refreshing...' : '↻ Refresh'}
+            </button>
+          </div>
 
-      <div className="weekly-table-wrapper">
-        <table className="weekly-court-table">
-          <thead>
-            <tr>
-              <th className="location-column">VENUE</th>
-              {visibleHours.map((hour) => (
-                <th key={hour} className={`time-header ${shouldHighlightCurrentHour && hour === currentHour ? 'current-hour' : ''}`}>
-                  {shouldHighlightCurrentHour && hour === currentHour ? (
-                    <span className="time-header-now-wrap">
-                      <span className="time-header-now">NOW</span>
-                      <span className="time-header-hour">{formatHourCompact(hour)}</span>
-                    </span>
-                  ) : (
-                    <span className="time-header-hour">{formatHourCompact(hour)}</span>
-                  )}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr>
-                <td colSpan={visibleHours.length + 1} className="table-loading-row">
-                  <div className="table-loading-content">
-                    <span className="table-loading-spinner" aria-hidden="true"></span>
-                    <span>Loading court availability for {formatDateDMY(selectedDate)}...</span>
-                  </div>
-                </td>
-              </tr>
-            ) : allLocations.length > 0 ? (
-              allLocations.map((location) => {
-                const venue = parseLocationKey(location);
-                const showVenueLogoImage = Boolean(venue.logoSrc) && !failedVenueLogos[venue.venueKey];
-                return (
-                <tr key={location}>
-                  <td className="location-cell">
-                    <span className="location-content">
-                      <span className={`venue-logo ${venue.badgeClass}`} aria-hidden="true">
-                        {showVenueLogoImage ? (
-                          <img
-                            className="venue-logo-image"
-                            src={venue.logoSrc ?? undefined}
-                            alt=""
-                            onError={() => {
-                              setFailedVenueLogos((prev) => {
-                                if (prev[venue.venueKey]) return prev;
-                                return { ...prev, [venue.venueKey]: true };
-                              });
-                            }}
-                          />
-                        ) : (
-                          venue.badgeText
-                        )}
-                      </span>
-                      <span className="location-details">
-                        <span className="location-name">
-                          <span className="location-name-text">{venue.locationName}</span>
+          <div className="weekly-table-wrapper">
+            <table className="weekly-court-table">
+              <thead>
+                <tr>
+                  <th className="location-column">VENUE</th>
+                  {visibleHours.map((hour) => (
+                    <th key={hour} className={`time-header ${shouldHighlightCurrentHour && hour === currentHour ? 'current-hour' : ''}`}>
+                      {shouldHighlightCurrentHour && hour === currentHour ? (
+                        <span className="time-header-now-wrap">
+                          <span className="time-header-now">NOW</span>
+                          <span className="time-header-hour">{formatHourCompact(hour)}</span>
                         </span>
-                        {locationAddresses[location] && (
-                          <span
-                            className="location-address"
-                            onClick={() => setMapsModalInfo({ location, address: locationAddresses[location] })}
-                          >
-                            <MapPin size={12} className="location-icon" aria-hidden="true" />
-                            {locationAddresses[location]}
-                          </span>
-                        )}
-                      </span>
-                    </span>
-                  </td>
-                  {visibleHours.map((hour) => {
-                    const count = getCountForTimeSlot(location, hour);
-                    const availClass = getAvailabilityClass(location, hour);
-                    const bookingUrl = count > 0 ? getBookingUrl(location) : null;
-                    const price = getPriceForTimeSlot(location, hour);
+                      ) : (
+                        <span className="time-header-hour">{formatHourCompact(hour)}</span>
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan={visibleHours.length + 1} className="table-loading-row">
+                      <div className="table-loading-content">
+                        <span className="table-loading-spinner" aria-hidden="true"></span>
+                        <span>Loading court availability for {formatDateDMY(selectedDate)}...</span>
+                      </div>
+                    </td>
+                  </tr>
+                ) : allLocations.length > 0 ? (
+                  allLocations.map((location) => {
+                    const venue = parseLocationKey(location);
+                    const showVenueLogoImage = Boolean(venue.logoSrc) && !failedVenueLogos[venue.venueKey];
                     return (
-                      <td
-                        key={hour}
-                        className={`availability-cell ${availClass} ${bookingUrl ? 'bookable' : ''} ${shouldHighlightCurrentHour && hour === currentHour ? 'current-hour' : ''}`}
-                        title={bookingUrl ? 'Click to open booking page for this day' : ''}
-                        onClick={() => handleCellClick(bookingUrl, location)}
-                      >
-                        <div className="availability-card">
-                          {count > 0 && <span className="availability-number">{count}</span>}
-                          {count > 0 && price !== null && price > 0 && (
-                            <span className="availability-price">${price}</span>
+                    <tr key={location}>
+                      <td className="location-cell">
+                        <span className="location-content">
+                          <span className={`venue-logo ${venue.badgeClass}`} aria-hidden="true">
+                            {showVenueLogoImage ? (
+                              <img
+                                className="venue-logo-image"
+                                src={venue.logoSrc ?? undefined}
+                                alt=""
+                                onError={() => {
+                                  setFailedVenueLogos((prev) => {
+                                    if (prev[venue.venueKey]) return prev;
+                                    return { ...prev, [venue.venueKey]: true };
+                                  });
+                                }}
+                              />
+                            ) : (
+                              venue.badgeText
+                            )}
+                          </span>
+                          <span className="location-details">
+                            <span className="location-name">
+                              <span className="location-name-text">{venue.locationName}</span>
+                            </span>
+                            {locationAddresses[location] && (
+                              <span
+                                className="location-address"
+                                onClick={() => setMapsModalInfo({ location, address: locationAddresses[location] })}
+                              >
+                                <MapPin size={12} className="location-icon" aria-hidden="true" />
+                                {locationAddresses[location]}
+                              </span>
+                            )}
+                          </span>
+                        </span>
+                      </td>
+                      {visibleHours.map((hour) => {
+                        const count = getCountForTimeSlot(location, hour);
+                        const availClass = getAvailabilityClass(location, hour);
+                        const bookingUrl = count > 0 ? getBookingUrl(location) : null;
+                        const price = getPriceForTimeSlot(location, hour);
+                        return (
+                          <td
+                            key={hour}
+                            className={`availability-cell ${availClass} ${bookingUrl ? 'bookable' : ''} ${shouldHighlightCurrentHour && hour === currentHour ? 'current-hour' : ''}`}
+                            title={bookingUrl ? 'Click to open booking page for this day' : ''}
+                            onClick={() => handleCellClick(bookingUrl, location, hour, count, price)}
+                          >
+                            <div className="availability-card">
+                              {count > 0 && <span className="availability-number">{count}</span>}
+                              {count > 0 && price !== null && price > 0 && (
+                                <span className="availability-price">${price}</span>
+                              )}
+                            </div>
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  );
+                })
+                ) : (
+                  <tr>
+                    <td colSpan={visibleHours.length + 1} className="empty-row">
+                      <div className="empty-row-content">
+                        <p>
+                          {hasActiveFilters
+                            ? 'No courts match your current filters.'
+                            : 'No courts available for the selected date.'}
+                        </p>
+                        <div className="empty-row-actions">
+                          {hasActiveFilters ? (
+                            <button type="button" className="empty-row-btn" onClick={resetFilters}>
+                              Clear filters
+                            </button>
+                          ) : (
+                            <button type="button" className="empty-row-btn" onClick={onRefresh}>
+                              Refresh data
+                            </button>
                           )}
                         </div>
-                      </td>
-                    );
-                  })}
-                </tr>
-              );
-            })
-            ) : (
-              <tr>
-                <td colSpan={visibleHours.length + 1} className="empty-row">
-                  <div className="empty-row-content">
-                    <p>
-                      {hasActiveFilters
-                        ? 'No courts match your current filters.'
-                        : 'No courts available for the selected date.'}
-                    </p>
-                    <div className="empty-row-actions">
-                      {hasActiveFilters ? (
-                        <button type="button" className="empty-row-btn" onClick={resetFilters}>
-                          Clear filters
-                        </button>
-                      ) : (
-                        <button type="button" className="empty-row-btn" onClick={onRefresh}>
-                          Refresh data
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
 
-      {pendingBookingUrl && (
-        <div className="booking-modal-overlay" onClick={closeBookingModal}>
-          <div className="booking-modal" onClick={(event) => event.stopPropagation()}>
-            <h3>Go To Booking Site?</h3>
-            <p>
-              Open the booking page for <strong>{pendingLocation}</strong> on <strong>{formatDateDMY(selectedDate)}</strong>?
-            </p>
-            <div className="booking-modal-actions">
-              <button className="modal-btn modal-btn-cancel" onClick={closeBookingModal}>
-                Cancel
-              </button>
-              <button className="modal-btn modal-btn-confirm" onClick={confirmBooking}>
-                Go To Website
-              </button>
+          {/* Availability Legend */}
+          <div className="availability-legend">
+            <span className="legend-label">Availability:</span>
+            <div className="legend-items">
+              <div className="legend-item">
+                <div className="legend-swatch one-available"></div>
+                <span>Last spot</span>
+              </div>
+              <div className="legend-item">
+                <div className="legend-swatch low-available"></div>
+                <span>Limited (2–4)</span>
+              </div>
+              <div className="legend-item">
+                <div className="legend-swatch medium-available"></div>
+                <span>Good (5–9)</span>
+              </div>
+              <div className="legend-item">
+                <div className="legend-swatch high-available"></div>
+                <span>Plenty (10+)</span>
+              </div>
             </div>
           </div>
-        </div>
+        </>
       )}
+
+      {pendingBookingUrl && (() => {
+        const locInfo = parseLocationKey(pendingLocation);
+        const address = locationAddresses[pendingLocation];
+        const todayStr = getSydneyTodayDate().toISOString().split('T')[0];
+        const isToday = selectedDate === todayStr;
+        const dayLabel = isToday ? 'Today' : new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long' });
+        const dateLabel = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
+        const timeLabel = pendingHour !== null ? (pendingHour === 12 ? '12PM' : pendingHour > 12 ? `${pendingHour - 12}PM` : `${pendingHour}AM`) : '—';
+        const availLabel = pendingCount === 1 ? 'LAST SPOT' : pendingCount <= 4 ? 'LIMITED' : pendingCount <= 9 ? 'GOOD' : 'PLENTY AVAILABLE';
+        const headerClass = pendingCount === 1 ? 'modal-header-one' : pendingCount <= 4 ? 'modal-header-low' : pendingCount <= 9 ? 'modal-header-medium' : 'modal-header-high';
+        return (
+          <div className="booking-modal-overlay" onClick={closeBookingModal}>
+            <div className="booking-modal-v2" onClick={(event) => event.stopPropagation()}>
+              <div className={`booking-modal-header ${headerClass}`}>
+                <div className="booking-modal-header-top">
+                  <span className="booking-modal-club-badge">{locInfo.venueName.split(' ')[0].toUpperCase()}</span>
+                  <button className="booking-modal-close" onClick={closeBookingModal} aria-label="Close">
+                    {availLabel} ×
+                  </button>
+                </div>
+                <div className="booking-modal-count">
+                  <span className="booking-modal-count-number">{pendingCount}</span>
+                  <span className="booking-modal-count-label"> courts available</span>
+                </div>
+              </div>
+              <div className="booking-modal-body">
+                <h3 className="booking-modal-venue-name">{locInfo.locationName}</h3>
+                {address && (
+                  <p className="booking-modal-address">
+                    <MapPin size={14} strokeWidth={2} />
+                    {address}
+                  </p>
+                )}
+                <div className="booking-modal-info-cards">
+                  <div className="booking-modal-info-card">
+                    <span className="info-card-label">DAY</span>
+                    <span className="info-card-primary">{dayLabel}</span>
+                    <span className="info-card-secondary">{dateLabel}</span>
+                  </div>
+                  <div className="booking-modal-info-card">
+                    <span className="info-card-label">TIME</span>
+                    <span className="info-card-primary">{timeLabel}</span>
+                    <span className="info-card-secondary">1 hour</span>
+                  </div>
+                  <div className="booking-modal-info-card">
+                    <span className="info-card-label">PRICE</span>
+                    <span className="info-card-primary">{pendingPrice !== null ? `$${pendingPrice}` : '—'}</span>
+                    <span className="info-card-secondary">{pendingPrice !== null ? 'per hour' : 'see site'}</span>
+                  </div>
+                </div>
+                <div className="booking-modal-actions-v2">
+                  <button className="modal-btn-browse" onClick={closeBookingModal}>
+                    Keep browsing
+                  </button>
+                  <button className="modal-btn-book" onClick={confirmBooking}>
+                    Book on {locInfo.venueName.split(' ')[0]} ↗
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {mapsModalInfo && (
         <div className="booking-modal-overlay" onClick={() => setMapsModalInfo(null)}>
