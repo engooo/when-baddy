@@ -445,19 +445,31 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
     return () => window.clearInterval(intervalId);
   }, []);
 
-  const getSydneyCurrentHour = (): number => {
+  const getSydneyCurrentTimeColumn = (): number => {
     const parts = new Intl.DateTimeFormat('en-AU', {
       timeZone: 'Australia/Sydney',
       hour: '2-digit',
+      minute: '2-digit',
       hour12: false,
     }).formatToParts(new Date(timeTick));
 
     const hourPart = parts.find((p) => p.type === 'hour')?.value;
+    const minutePart = parts.find((p) => p.type === 'minute')?.value;
     const hour = hourPart ? Number(hourPart) : NaN;
-    return Number.isFinite(hour) ? hour : new Date(timeTick).getHours();
+    const minute = minutePart ? Number(minutePart) : NaN;
+
+    const fallbackDate = new Date(timeTick);
+    const resolvedHour = Number.isFinite(hour) ? hour : fallbackDate.getHours();
+    const resolvedMinute = Number.isFinite(minute) ? minute : fallbackDate.getMinutes();
+
+    if (sportMode === 'map') {
+      return resolvedHour + (resolvedMinute >= 30 ? 0.5 : 0);
+    }
+
+    return resolvedHour;
   };
 
-  const currentHour = getSydneyCurrentHour();
+  const currentTimeColumn = getSydneyCurrentTimeColumn();
   const sydneyToday = getSydneyTodayDate();
   const sydneyTodayStr = `${sydneyToday.getFullYear()}-${String(sydneyToday.getMonth() + 1).padStart(2, '0')}-${String(sydneyToday.getDate()).padStart(2, '0')}`;
   const shouldHighlightCurrentHour = selectedDate === sydneyTodayStr;
@@ -991,7 +1003,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
   const isNightActive = startHour === 18 && endHour === 22;
 
   return (
-    <div className="weekly-table-container">
+    <div className={`weekly-table-container ${sportMode === 'map' ? 'pickleball-theme' : ''}`}>
       {isFiltersModalOpen && (
         <>
           <div className="filters-modal-backdrop" onClick={() => setIsFiltersModalOpen(false)} />
@@ -1300,7 +1312,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                   <th className="location-column">VENUE</th>
                   {visibleHours.map((hour) => {
                     const isHalfHour = hour % 1 !== 0;
-                    const isCurrentHourBlock = shouldHighlightCurrentHour && Math.floor(hour) === currentHour;
+                    const isCurrentHourBlock = shouldHighlightCurrentHour && hour === currentTimeColumn;
 
                     return (
                     <th
@@ -1422,7 +1434,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                           return (
                             <td
                               key={hour}
-                              className={`availability-cell ${availClass} ${bookingUrl ? 'bookable' : ''} ${shouldHighlightCurrentHour && Math.floor(hour) === currentHour ? 'current-hour' : ''} ${isPickleballCell ? 'connected-mode' : ''} ${runClass}`}
+                              className={`availability-cell ${availClass} ${bookingUrl ? 'bookable' : ''} ${shouldHighlightCurrentHour && hour === currentTimeColumn ? 'current-hour' : ''} ${isPickleballCell ? 'connected-mode' : ''} ${runClass}`}
                               title={bookingUrl ? 'Click to open booking page for this day' : ''}
                               onClick={() => handleCellClick(bookingUrl, location, hour, count, price)}
                             >

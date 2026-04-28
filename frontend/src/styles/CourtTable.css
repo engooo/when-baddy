@@ -15,6 +15,74 @@
   --availability-very-high: #56c296;
 }
 
+.weekly-table-container.pickleball-theme {
+  --brand-green: #1f9b96;
+  --brand-green-strong: #177e79;
+  --brand-green-gradient: linear-gradient(180deg, #2aaea8 0%, #1f9b96 100%);
+  --brand-green-soft: #c8e8e6;
+  --brand-green-soft-border: #9ccfcb;
+  --brand-green-tint: #eaf8f7;
+  --brand-green-ink: #0f6662;
+  --brand-green-current-border: #7fc5c1;
+  --availability-none: #edf4f3;
+  --availability-one: #d68a76;
+  --availability-low: #f0cd8a;
+  --availability-medium: #96d8d3;
+  --availability-high: #72c8c2;
+  --availability-very-high: #4eb9b2;
+}
+
+.weekly-table-container.pickleball-theme .filter-section,
+.weekly-table-container.pickleball-theme .weekly-court-table th,
+.weekly-table-container.pickleball-theme .weekly-court-table td,
+.weekly-table-container.pickleball-theme .location-column,
+.weekly-table-container.pickleball-theme .location-cell,
+.weekly-table-container.pickleball-theme .venue-details-row td {
+  background: #f2fbfa !important;
+  border-color: #d5e8e6;
+}
+
+.weekly-table-container.pickleball-theme .time-header,
+.weekly-table-container.pickleball-theme .location-column,
+.weekly-table-container.pickleball-theme .legend-label {
+  color: #5d7f7d;
+}
+
+.weekly-table-container.pickleball-theme .view-toggle-btn,
+.weekly-table-container.pickleball-theme .quick-filter-chip,
+.weekly-table-container.pickleball-theme .suburb-pill-btn,
+.weekly-table-container.pickleball-theme .stylized-time-field select,
+.weekly-table-container.pickleball-theme .open-filters-btn,
+.weekly-table-container.pickleball-theme .pick-date-btn {
+  border-color: #b6d8d5;
+  color: #2c6461;
+}
+
+.weekly-table-container.pickleball-theme .view-toggle-btn:hover:not(.active),
+.weekly-table-container.pickleball-theme .quick-filter-chip:hover,
+.weekly-table-container.pickleball-theme .suburb-pill-btn:hover,
+.weekly-table-container.pickleball-theme .open-filters-btn:hover,
+.weekly-table-container.pickleball-theme .pick-date-btn:hover {
+  background: #edf8f7;
+  border-color: var(--brand-green-soft-border);
+  color: var(--brand-green-ink);
+}
+
+.weekly-table-container.pickleball-theme .view-toggle-btn.active,
+.weekly-table-container.pickleball-theme .quick-filter-chip.active,
+.weekly-table-container.pickleball-theme .suburb-pill-btn.active,
+.weekly-table-container.pickleball-theme .filters-apply-btn {
+  background: var(--brand-green-gradient);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.weekly-table-container.pickleball-theme .location-expand-btn {
+  background: #eaf6f5;
+  border-color: #afd3d0;
+  color: #2a5f5c;
+}
+
 .weekly-table-container {
   display: flex;
   flex-direction: column;
