@@ -14,7 +14,7 @@ const SOURCE_VERSION = process.env.SOURCE_VERSION || 'local-dev';
 const capabilities = {
   pro1Enabled: true,
   rokettoEnabled: true,
-  sources: ['alpha', 'nbc', 'pro1', 'roketto'],
+  sources: ['alpha', 'nbc', 'pro1', 'roketto', 'picklepoint'],
 };
 
 // Health check

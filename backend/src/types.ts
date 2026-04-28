@@ -19,14 +19,14 @@ export interface Location {
 }
 
 export interface CourtData {
-  club: 'alpha' | 'nbc' | 'pro1' | 'roketto';
+  club: 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint';
   date: string; // YYYY-MM-DD
   locations: Location[];
   scrapedAt: string; // ISO timestamp
 }
 
 export interface AggregatedCourt {
-  club: 'alpha' | 'nbc' | 'pro1' | 'roketto';
+  club: 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint';
   location: string;
   locationId: string;
   address: string;

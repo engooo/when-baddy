@@ -1,5 +1,5 @@
 export interface AggregatedCourt {
-  club: 'alpha' | 'nbc' | 'pro1' | 'roketto';
+  club: 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint';
   location: string;
   locationId: string;
   address: string;

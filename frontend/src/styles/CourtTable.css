@@ -1319,6 +1319,14 @@
   background: #ffffff;
 }
 
+.venue-logo-picklepoint {
+  background: #0cab72;
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  border-color: transparent;
+}
+
 .venue-logo-default {
   background: #7f8a83;
   border-color: transparent;
@@ -1356,9 +1364,18 @@
   letter-spacing: 0.02em;
 }
 
+.time-header.is-half-hour {
+  font-size: 0.82rem;
+}
+
 .time-header-hour {
   display: block;
   white-space: nowrap;
+}
+
+.time-header-hour-muted {
+  color: #a8b3ad;
+  font-weight: 300;
 }
 
 .time-header-now-wrap {
@@ -1450,6 +1467,7 @@
   justify-content: center;
   gap: 0.16rem;
   background: #eef0ee;
+  position: relative;
 }
 
 .availability-cell.bookable {
@@ -1457,7 +1475,49 @@
 }
 
 .availability-cell.bookable:hover {
-  transform: translateY(-1px);
+  transform: translateY(-3px) scale(1.015);
+  z-index: 6;
+}
+
+.availability-cell.bookable:hover .availability-card {
+  box-shadow: 0 10px 24px rgba(10, 171, 114, 0.22), 0 0 0 2px rgba(10, 171, 114, 0.55);
+  filter: saturate(1.08) brightness(1.03);
+}
+
+.availability-cell.bookable:hover .availability-number {
+  transform: scale(1.06);
+}
+
+.availability-cell.bookable:hover .availability-price {
+  opacity: 1;
+}
+
+.availability-cell.connected-mode {
+  padding-left: 0.08rem !important;
+  padding-right: 0.08rem !important;
+}
+
+.availability-cell.connected-mode.run-start .availability-card,
+.availability-cell.connected-mode.run-middle .availability-card,
+.availability-cell.connected-mode.run-end .availability-card {
+  border-radius: 0;
+}
+
+.availability-cell.connected-mode.run-start .availability-card {
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+  margin-right: -0.08rem;
+}
+
+.availability-cell.connected-mode.run-middle .availability-card {
+  margin-left: -0.08rem;
+  margin-right: -0.08rem;
+}
+
+.availability-cell.connected-mode.run-end .availability-card {
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+  margin-left: -0.08rem;
 }
 
 .availability-cell.none-available .availability-card {
@@ -1509,6 +1569,41 @@
   display: inline-block;
 }
 
+.availability-hover-hint {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%) translateY(4px);
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: #f6faf7;
+  background: rgba(14, 43, 31, 0.95);
+  border-radius: 999px;
+  padding: 0.22rem 0.5rem;
+  box-shadow: 0 8px 18px rgba(10, 31, 23, 0.2);
+  transition: opacity 0.16s ease, transform 0.16s ease;
+  z-index: 6;
+}
+
+.availability-hover-hint::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  border-width: 5px;
+  border-style: solid;
+  border-color: rgba(14, 43, 31, 0.95) transparent transparent transparent;
+}
+
+.availability-cell.connected-mode.bookable:hover .availability-hover-hint {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 .empty-state {
   text-align: center;
   padding: 2.5rem;
@@ -1535,6 +1630,143 @@
 .pickleball-coming-soon p {
   margin: 0;
   color: #5e6d64;
+}
+
+/* ─── Pickleball view ──────────────────────────────────────────────── */
+
+.pickleball-view {
+  padding: 0;
+}
+
+.pickle-venue-card {
+  background: #ffffff;
+  border: 1px solid #c8ddd4;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.pickle-venue-header {
+  padding: 1.1rem 1.4rem 0.9rem;
+  border-bottom: 1px solid #e4efea;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.pickle-venue-name-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.pickle-venue-name {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f5c3e;
+  letter-spacing: -0.01em;
+}
+
+.pickle-book-all-btn {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #0cab72;
+  text-decoration: none;
+  padding: 0.3rem 0.75rem;
+  border: 1.5px solid #0cab72;
+  border-radius: 999px;
+  transition: background 0.15s, color 0.15s;
+}
+
+.pickle-book-all-btn:hover {
+  background: #0cab72;
+  color: #ffffff;
+}
+
+.pickle-venue-address {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: #6d8578;
+}
+
+.pickle-slots-header {
+  padding: 0.65rem 1.4rem 0;
+  font-size: 0.78rem;
+  color: #7a9587;
+  font-weight: 500;
+}
+
+.pickle-slots-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 0.75rem;
+  padding: 0.75rem 1.4rem 1.25rem;
+}
+
+.pickle-slot-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.85rem 1rem;
+  background: #f0faf5;
+  border: 1.5px solid #b8e0cc;
+  border-radius: 10px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
+}
+
+.pickle-slot-card:hover {
+  background: #d8f2e5;
+  border-color: #0cab72;
+  transform: translateY(-1px);
+}
+
+.pickle-slot-time {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #0f5c3e;
+  line-height: 1.2;
+}
+
+.pickle-slot-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.pickle-slot-count {
+  font-size: 0.75rem;
+  color: #4a7a5e;
+  font-weight: 500;
+}
+
+.pickle-slot-price {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #0cab72;
+  background: #e0f5ec;
+  padding: 0.1rem 0.4rem;
+  border-radius: 999px;
+}
+
+.pickle-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 2rem 1.4rem;
+  color: #6d8578;
+  font-size: 0.9rem;
+}
+
+.pickle-empty {
+  padding: 2rem 1.4rem;
+  color: #7a9587;
+  font-size: 0.9rem;
+  text-align: center;
 }
 
 .empty-row {

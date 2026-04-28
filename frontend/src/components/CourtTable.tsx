@@ -9,10 +9,15 @@ import {
   Zap,
 } from 'lucide-react';
 import type { SportMode } from '../types';
+import {
+  getBucketWindowFromHour,
+  parseTimeSlotRangeMinutes,
+  rangesOverlap,
+} from '../utils/timeBuckets';
 import '../styles/CourtTable.css';
 
 interface AggregatedCourt {
-  club: 'alpha' | 'nbc' | 'pro1' | 'roketto';
+  club: 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint';
   location: string;
   locationId: string;
   address: string;
@@ -37,6 +42,8 @@ interface WeeklyCourtTableProps {
 
 const DEFAULT_START_HOUR = 10;
 const DEFAULT_END_HOUR = 22;
+const GRID_TIME_COLUMNS = Array.from({ length: 13 }, (_, i) => 10 + i);
+const PICKLEBALL_TIME_COLUMNS = Array.from({ length: 25 }, (_, i) => 10 + i * 0.5);
 
 // Suburbs in order
 const SUBURB_ORDER = [
@@ -66,24 +73,26 @@ function parseOptionalHourParam(raw: string | null): number | null {
 function parseTimeSlotStartHour(timeSlot: string): number | null {
   const normalized = timeSlot.trim().toLowerCase();
 
-  // Range format, e.g. "4:00pm–5:00pm"
+  // Range format, e.g. "4:30pm–5:00pm"
   let match = normalized.match(/^(\d{1,2}):(\d{2})(am|pm)\s*[–-]\s*(\d{1,2}):(\d{2})(am|pm)$/);
   if (match) {
     let hour = Number(match[1]);
+    const minute = Number(match[2]);
     const period = match[3];
     if (period === 'pm' && hour !== 12) hour += 12;
     if (period === 'am' && hour === 12) hour = 0;
-    return hour;
+    return hour + (minute >= 30 ? 0.5 : 0);
   }
 
-  // Single time format, e.g. "4:00pm"
+  // Single time format, e.g. "4:30pm"
   match = normalized.match(/^(\d{1,2}):(\d{2})(am|pm)$/);
   if (match) {
     let hour = Number(match[1]);
+    const minute = Number(match[2]);
     const period = match[3];
     if (period === 'pm' && hour !== 12) hour += 12;
     if (period === 'am' && hour === 12) hour = 0;
-    return hour;
+    return hour + (minute >= 30 ? 0.5 : 0);
   }
 
   return null;
@@ -191,6 +200,17 @@ function parseLocationKey(locationKey: string): {
       logoSrc: '/assets/venue-logos/roketto_logo.png',
       badgeText: 'R',
       badgeClass: 'venue-logo-roketto',
+    };
+  }
+
+  if (locationKey.startsWith('Picklepoint ')) {
+    return {
+      venueKey: 'picklepoint',
+      venueName: 'Pickle Point',
+      locationName: 'Pickle Point',
+      logoSrc: null,
+      badgeText: 'PP',
+      badgeClass: 'venue-logo-picklepoint',
     };
   }
 
@@ -361,6 +381,10 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
       return 'https://roketto.sportlogic.net.au/secure/customer/booking/v1/public/show?readOnly=false&popupMsgDisabled=false&hideTopSiteBar=false';
     }
 
+    if (court.club === 'picklepoint') {
+      return 'https://clubspark.net/Picklepoint/Booking/BookByDate';
+    }
+
     return null;
   };
 
@@ -387,13 +411,20 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
     closeBookingModal();
   };
 
-  // All available time slots from 10am to 11pm (13 slots: 10-22)
-  const ALL_TIME_HOURS = Array.from({ length: 13 }, (_, i) => 10 + i);
+  const activeTimeColumns = sportMode === 'map' ? PICKLEBALL_TIME_COLUMNS : GRID_TIME_COLUMNS;
 
   const visibleHours = useMemo(
-    () => ALL_TIME_HOURS.filter((hour) => hour >= startHour && hour <= endHour),
-    [startHour, endHour]
+    () => activeTimeColumns.filter((hour) => hour >= startHour && hour <= endHour),
+    [activeTimeColumns, startHour, endHour]
   );
+
+  useEffect(() => {
+    if (sportMode !== 'grid') return;
+
+    // Keep badminton on whole-hour filters when switching back from pickleball mode.
+    setStartHour((prev) => Math.floor(prev));
+    setEndHour((prev) => Math.ceil(prev));
+  }, [sportMode]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
@@ -581,8 +612,22 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
 
   const filteredCourts = useMemo(() => {
     return courts.filter((court) => {
+      // Sport mode filter
+      if (sportMode === 'grid' && court.club === 'picklepoint') return false;
+      if (sportMode === 'map' && court.club !== 'picklepoint') return false;
+
       if (selectedSuburbs.length > 0 && !selectedSuburbs.includes(court.suburb)) {
         return false;
+      }
+
+      if (sportMode === 'map') {
+        // For pickleball, slots are large windows (e.g. "6:00am–6:00pm").
+        // Include the court if its window overlaps the visible [startHour, endHour] range.
+        const range = parseTimeSlotRangeMinutes(court.timeSlot);
+        if (!range) return false;
+        const visibleStart = startHour * 60;
+        const visibleEnd = endHour * 60 + 30; // +30 to include the last half-hour bucket
+        return range.start < visibleEnd && range.end > visibleStart;
       }
 
       const slotStartHour = parseTimeSlotStartHour(court.timeSlot);
@@ -596,7 +641,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
 
       return true;
     });
-  }, [courts, selectedSuburbs, startHour, endHour]);
+  }, [courts, selectedSuburbs, startHour, endHour, sportMode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -644,7 +689,9 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
             ? 'NBC'
             : court.club === 'pro1'
               ? 'Pro1'
-              : 'Roketto';
+              : court.club === 'picklepoint'
+                ? 'Picklepoint'
+                : 'Roketto';
       const locationKey = `${clubLabel} ${court.location}`;
       if (!grouped[locationKey]) {
         grouped[locationKey] = {};
@@ -666,6 +713,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         court.club === 'alpha' ? 'Alpha'
         : court.club === 'nbc' ? 'NBC'
         : court.club === 'pro1' ? 'Pro1'
+        : court.club === 'picklepoint' ? 'Picklepoint'
         : 'Roketto';
       const locationKey = `${clubLabel} ${court.location}`;
       if (!map[locationKey] && court.address) {
@@ -674,6 +722,42 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
     });
     return map;
   }, [filteredCourts]);
+
+  const pickleballBucketStats = useMemo(() => {
+    const stats: Record<string, Record<string, { count: number; minPrice: number | null }>> = {};
+    if (sportMode !== 'map') return stats;
+
+    for (const [location, timeSlots] of Object.entries(courtsByLocationAndTime)) {
+      const byBucket: Record<string, { count: number; minPrice: number | null }> = {};
+
+      for (const hour of visibleHours) {
+        const bucket = getBucketWindowFromHour(hour, 30);
+        let count = 0;
+        const normalizedPrices: number[] = [];
+
+        for (const timeSlot in timeSlots) {
+          const sourceRange = parseTimeSlotRangeMinutes(timeSlot);
+          if (!sourceRange || !rangesOverlap(sourceRange, bucket)) continue;
+
+          const overlappingCourts = timeSlots[timeSlot];
+          count += overlappingCourts.length;
+
+          for (const court of overlappingCourts) {
+            normalizedPrices.push(court.price);
+          }
+        }
+
+        byBucket[String(hour)] = {
+          count,
+          minPrice: normalizedPrices.length > 0 ? Math.round(Math.min(...normalizedPrices) * 100) / 100 : null,
+        };
+      }
+
+      stats[location] = byBucket;
+    }
+
+    return stats;
+  }, [sportMode, courtsByLocationAndTime, visibleHours]);
 
   const hasAnyAvailabilityInVisibleRange = (location: string): boolean => {
     return visibleHours.some((hour) => getCountForTimeSlot(location, hour) > 0);
@@ -686,63 +770,75 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
       return locations;
     }
     return locations.filter((location) => hasAnyAvailabilityInVisibleRange(location));
-  }, [courtsByLocationAndTime, hideEmptyLocations, visibleHours]);
+  }, [courtsByLocationAndTime, hideEmptyLocations, visibleHours, pickleballBucketStats]);
 
   function getCountForTimeSlot(location: string, hour: number): number {
-    // Find the time slot that starts at this hour
+    if (sportMode === 'map') {
+      return pickleballBucketStats[location]?.[String(hour)]?.count ?? 0;
+    }
+
     const timeSlots = courtsByLocationAndTime[location] || {};
-    
+
+    const targetWholeHour = Math.floor(hour);
+    const targetMinute = hour % 1 >= 0.5 ? 30 : 0;
+
     for (const timeSlot in timeSlots) {
-      // First try matching range format: "10:00am–11:00am"
       let match = timeSlot.match(/(\d+):(\d+)(am|pm)–(\d+):(\d+)(am|pm)/);
       if (match) {
         let startHour = parseInt(match[1]);
+        const startMinute = parseInt(match[2]);
         const startPeriod = match[3];
         if (startPeriod === 'pm' && startHour !== 12) startHour += 12;
         if (startPeriod === 'am' && startHour === 12) startHour = 0;
-        
-        if (startHour === hour) {
+        if (startHour === targetWholeHour && startMinute === targetMinute) {
           return timeSlots[timeSlot].length;
         }
       } else {
-        // Try single time format: "10:00am" or "10:00pm"
         match = timeSlot.match(/(\d+):(\d+)(am|pm)/);
         if (match) {
           let timeHour = parseInt(match[1]);
+          const timeMinute = parseInt(match[2]);
           const timePeriod = match[3];
           if (timePeriod === 'pm' && timeHour !== 12) timeHour += 12;
           if (timePeriod === 'am' && timeHour === 12) timeHour = 0;
-          
-          if (timeHour === hour) {
+          if (timeHour === targetWholeHour && timeMinute === targetMinute) {
             return timeSlots[timeSlot].length;
           }
         }
       }
     }
-    
     return 0;
   }
 
   const getPriceForTimeSlot = (location: string, hour: number): number | null => {
+    if (sportMode === 'map') {
+      return pickleballBucketStats[location]?.[String(hour)]?.minPrice ?? null;
+    }
+
     const timeSlots = courtsByLocationAndTime[location] || {};
+
+    const targetWholeHour = Math.floor(hour);
+    const targetMinute = hour % 1 >= 0.5 ? 30 : 0;
     for (const timeSlot in timeSlots) {
       let match = timeSlot.match(/(\d+):(\d+)(am|pm)–(\d+):(\d+)(am|pm)/);
       if (match) {
         let startHour = parseInt(match[1]);
+        const startMinute = parseInt(match[2]);
         const startPeriod = match[3];
         if (startPeriod === 'pm' && startHour !== 12) startHour += 12;
         if (startPeriod === 'am' && startHour === 12) startHour = 0;
-        if (startHour === hour && timeSlots[timeSlot].length > 0) {
+        if (startHour === targetWholeHour && startMinute === targetMinute && timeSlots[timeSlot].length > 0) {
           return timeSlots[timeSlot][0].price;
         }
       } else {
         match = timeSlot.match(/(\d+):(\d+)(am|pm)/);
         if (match) {
           let timeHour = parseInt(match[1]);
+          const timeMinute = parseInt(match[2]);
           const timePeriod = match[3];
           if (timePeriod === 'pm' && timeHour !== 12) timeHour += 12;
           if (timePeriod === 'am' && timeHour === 12) timeHour = 0;
-          if (timeHour === hour && timeSlots[timeSlot].length > 0) {
+          if (timeHour === targetWholeHour && timeMinute === targetMinute && timeSlots[timeSlot].length > 0) {
             return timeSlots[timeSlot][0].price;
           }
         }
@@ -761,19 +857,23 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
   };
 
   const formatHourDisplay = (hour: number): string => {
-    if (hour < 12) {
-      return `${hour}:00 AM`;
-    } else if (hour === 12) {
-      return `12:00 PM`;
+    const wholeHour = Math.floor(hour);
+    const mins = hour % 1 >= 0.5 ? '30' : '00';
+    if (wholeHour < 12) {
+      return `${wholeHour}:${mins} AM`;
+    } else if (wholeHour === 12) {
+      return `12:${mins} PM`;
     } else {
-      return `${hour - 12}:00 PM`;
+      return `${wholeHour - 12}:${mins} PM`;
     }
   };
 
   const formatHourCompact = (hour: number): string => {
-    if (hour === 12) return '12 PM';
-    if (hour > 12) return `${hour - 12} PM`;
-    return `${hour} AM`;
+    const wholeHour = Math.floor(hour);
+    const mins = hour % 1 >= 0.5 ? ':30' : '';
+    if (wholeHour === 12) return `12${mins} PM`;
+    if (wholeHour > 12) return `${wholeHour - 12}${mins} PM`;
+    return `${wholeHour}${mins} AM`;
   };
 
   const resetFilters = () => {
@@ -885,7 +985,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                             if (nextStart > endHour) setEndHour(nextStart);
                           }}
                         >
-                          {ALL_TIME_HOURS.map((hour) => (
+                          {activeTimeColumns.map((hour) => (
                             <option key={`start-${hour}`} value={hour}>{formatHourDisplay(hour)}</option>
                           ))}
                         </select>
@@ -901,7 +1001,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                             if (nextEnd < startHour) setStartHour(nextEnd);
                           }}
                         >
-                          {ALL_TIME_HOURS.map((hour) => (
+                          {activeTimeColumns.map((hour) => (
                             <option key={`end-${hour}`} value={hour}>{formatHourDisplay(hour)}</option>
                           ))}
                         </select>
@@ -1083,10 +1183,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         </div>
       </div>
 
-      {sportMode === 'map' ? (
-        null
-      ) : (
-        <>
+      <>
           <div className="table-meta-row">
             <span className="last-updated">Last updated: {lastUpdateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
             <button
@@ -1104,18 +1201,29 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
               <thead>
                 <tr>
                   <th className="location-column">VENUE</th>
-                  {visibleHours.map((hour) => (
-                    <th key={hour} className={`time-header ${shouldHighlightCurrentHour && hour === currentHour ? 'current-hour' : ''}`}>
-                      {shouldHighlightCurrentHour && hour === currentHour ? (
+                  {visibleHours.map((hour) => {
+                    const isHalfHour = hour % 1 !== 0;
+                    const isCurrentHourBlock = shouldHighlightCurrentHour && Math.floor(hour) === currentHour;
+
+                    return (
+                    <th
+                      key={hour}
+                      className={`time-header ${isCurrentHourBlock ? 'current-hour' : ''} ${isHalfHour ? 'is-half-hour' : ''}`}
+                      aria-label={formatHourDisplay(hour)}
+                    >
+                      {isCurrentHourBlock && !isHalfHour ? (
                         <span className="time-header-now-wrap">
                           <span className="time-header-now">NOW</span>
                           <span className="time-header-hour">{formatHourCompact(hour)}</span>
                         </span>
                       ) : (
-                        <span className="time-header-hour">{formatHourCompact(hour)}</span>
+                        <span className={`time-header-hour ${isHalfHour ? 'time-header-hour-muted' : ''}`}>
+                          {isHalfHour ? ':30' : formatHourCompact(hour)}
+                        </span>
                       )}
                     </th>
-                  ))}
+                    );
+                  })}
                 </tr>
               </thead>
               <tbody>
@@ -1132,6 +1240,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                   allLocations.map((location) => {
                     const venue = parseLocationKey(location);
                     const showVenueLogoImage = Boolean(venue.logoSrc) && !failedVenueLogos[venue.venueKey];
+                    const countsByHour = visibleHours.map((hour) => getCountForTimeSlot(location, hour));
                     return (
                     <tr key={location}>
                       <td className="location-cell">
@@ -1169,22 +1278,53 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                           </span>
                         </span>
                       </td>
-                      {visibleHours.map((hour) => {
-                        const count = getCountForTimeSlot(location, hour);
+                      {visibleHours.map((hour, index) => {
+                        const count = countsByHour[index];
                         const availClass = getAvailabilityClass(location, hour);
                         const bookingUrl = count > 0 ? getBookingUrl(location) : null;
                         const price = getPriceForTimeSlot(location, hour);
+                        const isPickleballCell = sportMode === 'map';
+                        const prevCount = index > 0 ? countsByHour[index - 1] : 0;
+                        const nextCount = index < countsByHour.length - 1 ? countsByHour[index + 1] : 0;
+                        let runClass = '';
+
+                        if (isPickleballCell && count > 0) {
+                          const hasPrev = prevCount > 0;
+                          const hasNext = nextCount > 0;
+                          runClass = hasPrev && hasNext
+                            ? 'run-middle'
+                            : hasPrev
+                              ? 'run-end'
+                              : hasNext
+                                ? 'run-start'
+                                : 'run-single';
+                        }
+
+                        const showPrice =
+                          count > 0 &&
+                          price !== null &&
+                          price > 0 &&
+                          (!isPickleballCell || runClass === 'run-start' || runClass === 'run-single');
+
+                        const bookingHint =
+                          isPickleballCell && bookingUrl
+                            ? `Book from ${formatHourDisplay(hour)} to ${formatHourDisplay(hour + 0.5)}`
+                            : null;
+
                         return (
                           <td
                             key={hour}
-                            className={`availability-cell ${availClass} ${bookingUrl ? 'bookable' : ''} ${shouldHighlightCurrentHour && hour === currentHour ? 'current-hour' : ''}`}
+                            className={`availability-cell ${availClass} ${bookingUrl ? 'bookable' : ''} ${shouldHighlightCurrentHour && Math.floor(hour) === currentHour ? 'current-hour' : ''} ${isPickleballCell ? 'connected-mode' : ''} ${runClass}`}
                             title={bookingUrl ? 'Click to open booking page for this day' : ''}
                             onClick={() => handleCellClick(bookingUrl, location, hour, count, price)}
                           >
                             <div className="availability-card">
                               {count > 0 && <span className="availability-number">{count}</span>}
-                              {count > 0 && price !== null && price > 0 && (
+                              {showPrice && (
                                 <span className="availability-price">${price}</span>
+                              )}
+                              {bookingHint && (
+                                <span className="availability-hover-hint">{bookingHint}</span>
                               )}
                             </div>
                           </td>
@@ -1244,7 +1384,6 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
             </div>
           </div>
         </>
-      )}
 
       {pendingBookingUrl && (() => {
         const locInfo = parseLocationKey(pendingLocation);
@@ -1253,7 +1392,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         const isToday = selectedDate === todayStr;
         const dayLabel = isToday ? 'Today' : new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long' });
         const dateLabel = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
-        const timeLabel = pendingHour !== null ? (pendingHour === 12 ? '12PM' : pendingHour > 12 ? `${pendingHour - 12}PM` : `${pendingHour}AM`) : '—';
+        const timeLabel = pendingHour !== null ? formatHourCompact(pendingHour) : '—';
         const availLabel = pendingCount === 1 ? 'LAST SPOT' : pendingCount <= 4 ? 'LIMITED' : pendingCount <= 9 ? 'GOOD' : 'PLENTY AVAILABLE';
         const headerClass = pendingCount === 1 ? 'modal-header-one' : pendingCount <= 4 ? 'modal-header-low' : pendingCount <= 9 ? 'modal-header-medium' : 'modal-header-high';
         return (
@@ -1288,7 +1427,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                   <div className="booking-modal-info-card">
                     <span className="info-card-label">TIME</span>
                     <span className="info-card-primary">{timeLabel}</span>
-                    <span className="info-card-secondary">1 hour</span>
+                    <span className="info-card-secondary">{sportMode === 'map' ? '30 mins' : '1 hour'}</span>
                   </div>
                   <div className="booking-modal-info-card">
                     <span className="info-card-label">PRICE</span>
