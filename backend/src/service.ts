@@ -3,10 +3,11 @@ import { scrapeNBCBadminton } from './scrapers/nbcScraper.js';
 import { scrapePro1Badminton } from './scrapers/pro1Scraper.js';
 import { scrapeRokettoBadminton } from './scrapers/rokettoScraper.js';
 import { scrapePicklePoint } from './scrapers/picklepointScraper.js';
+import { scrapeMindbody } from './scrapers/mindbodyScraper.js';
 import type { AggregatedCourt, CourtData } from './types.js';
 import { getRandomMockData } from './mockData.js';
 
-type ClubKey = 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint';
+type ClubKey = 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint' | 'mindbody';
 
 const sourceCache = new Map<string, { data: AggregatedCourt[]; timestamp: number }>();
 const inflightSourceRequests = new Map<string, Promise<AggregatedCourt[]>>();
@@ -14,7 +15,7 @@ const inflightRequests = new Map<string, Promise<AggregatedCourt[]>>();
 
 const USE_MOCK_DATA = process.env.MOCK_DATA === 'true';
 
-const CLUBS: ClubKey[] = ['alpha', 'nbc', 'pro1', 'roketto', 'picklepoint'];
+const CLUBS: ClubKey[] = ['alpha', 'nbc', 'pro1', 'roketto', 'picklepoint', 'mindbody'];
 
 function getSydneyTodayParts(): { day: number; month: number; year: number } {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -75,6 +76,13 @@ async function fetchClubData(club: ClubKey, date: { day: number; month: number; 
   if (club === 'roketto') {
     return scrapeRokettoBadminton(date).catch((e) => {
       console.error('Roketto scrape failed:', e);
+      return null;
+    });
+  }
+
+  if (club === 'mindbody') {
+    return scrapeMindbody(date).catch((e) => {
+      console.error('Mindbody scrape failed:', e);
       return null;
     });
   }
@@ -182,6 +190,7 @@ function normalizeData(data: CourtData): AggregatedCourt[] {
           suburb: location.suburb,
           courtName: court.courtName,
           courtId: court.courtId,
+          courtType: court.courtType,
           timeSlot: slot.timeSlot,
           status: slot.status,
           price: slot.price,

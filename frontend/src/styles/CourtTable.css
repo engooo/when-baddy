@@ -1446,6 +1446,14 @@
   border-color: transparent;
 }
 
+.venue-logo-mindbody {
+  background: #155e75;
+  color: #ecfeff;
+  font-size: 0.65rem;
+  font-weight: 800;
+  border-color: transparent;
+}
+
 .venue-logo-default {
   background: #7f8a83;
   border-color: transparent;
@@ -1741,13 +1749,39 @@
   text-align: left;
 }
 
+.venue-details-title-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 0.55rem;
+}
+
 .venue-details-title {
   font-size: 0.75rem;
   font-weight: 800;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #5b6f64;
-  margin-bottom: 0.55rem;
+}
+
+.venue-court-types-legend {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-size: 0.78rem;
+  color: #6d8578;
+}
+
+.court-type-label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: #6d8578;
+  font-weight: 500;
+}
+
+.court-type-label.premium {
+  color: #78350f;
 }
 
 .venue-court-matrix-wrap {
@@ -1819,6 +1853,16 @@
   display: block;
   font-size: 0.78rem;
   font-weight: 700;
+  line-height: 1.1;
+}
+
+.venue-court-slot-open {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  color: #14543b;
   line-height: 1.1;
 }
 
@@ -2919,4 +2963,67 @@
     padding: 2rem;
     font-size: 0.9rem;
   }
+}
+
+/* Show court styling in the table */
+.court-row.show-court {
+  background-color: #f0f4ff;
+  border-left: 4px solid #4f46e5;
+}
+
+.court-row.show-court .location-cell {
+  background-color: #f0f4ff;
+  border-left-color: #4f46e5;
+}
+
+.court-name {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.65rem;
+  border-radius: 12px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  white-space: nowrap;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  line-height: 1.2;
+}
+
+.badge-premium {
+  background-color: #fbbf24;
+  color: #78350f;
+  box-shadow: 0 1px 2px rgba(251, 191, 36, 0.3);
+}
+
+/* Enhanced pricing display */
+.venue-court-slot-price {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 800;
+  line-height: 1.2;
+  color: inherit;
+}
+
+.venue-court-slot-cell.available .venue-court-slot-price {
+  color: #0f3f2d;
+  font-size: 0.88rem;
+  font-weight: 800;
+}
+
+.venue-court-matrix th.venue-court-column-head {
+  position: relative;
+}
+
+.venue-court-matrix th.venue-court-column-head .badge-premium {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  font-size: 0.62rem;
+  padding: 0.15rem 0.5rem;
 }

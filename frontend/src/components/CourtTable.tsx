@@ -17,13 +17,14 @@ import {
 import '../styles/CourtTable.css';
 
 interface AggregatedCourt {
-  club: 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint';
+  club: 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint' | 'mindbody';
   location: string;
   locationId: string;
   address: string;
   suburb: string;
   courtName: string;
   courtId: string;
+  courtType?: 'casual' | 'show';
   timeSlot: string; // e.g., "9:00am–10:00am"
   status: 'available' | 'booked' | 'past';
   price: number;
@@ -214,6 +215,17 @@ function parseLocationKey(locationKey: string): {
     };
   }
 
+  if (locationKey.startsWith('Mindbody ')) {
+    return {
+      venueKey: 'mindbody',
+      venueName: 'Ryde Multisport & Racquet Centre',
+      locationName: locationKey.replace(/^Mindbody\s+/, ''),
+      logoSrc: '/assets/venue-logos/ryde_logo.png',
+      badgeText: 'MB',
+      badgeClass: 'venue-logo-mindbody',
+    };
+  }
+
   return {
     venueKey: 'default',
     venueName: 'Venue',
@@ -385,6 +397,10 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
 
     if (court.club === 'picklepoint') {
       return 'https://clubspark.net/Picklepoint/Booking/BookByDate';
+    }
+
+    if (court.club === 'mindbody') {
+      return 'https://go.mindbodyonline.com/book/widgets/appointments/view/7b9803fef1/services';
     }
 
     return null;
@@ -636,8 +652,9 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
   const filteredCourts = useMemo(() => {
     return courts.filter((court) => {
       // Sport mode filter
-      if (sportMode === 'grid' && court.club === 'picklepoint') return false;
-      if (sportMode === 'map' && court.club !== 'picklepoint') return false;
+      const isPickleballClub = court.club === 'picklepoint' || court.club === 'mindbody';
+      if (sportMode === 'grid' && isPickleballClub) return false;
+      if (sportMode === 'map' && !isPickleballClub) return false;
 
       if (selectedSuburbs.length > 0 && !selectedSuburbs.includes(court.suburb)) {
         return false;
@@ -714,7 +731,9 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
               ? 'Pro1'
               : court.club === 'picklepoint'
                 ? 'Picklepoint'
-                : 'Roketto';
+                : court.club === 'mindbody'
+                  ? 'Mindbody'
+                  : 'Roketto';
       const locationKey = `${clubLabel} ${court.location}`;
       if (!grouped[locationKey]) {
         grouped[locationKey] = {};
@@ -737,6 +756,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         : court.club === 'nbc' ? 'NBC'
         : court.club === 'pro1' ? 'Pro1'
         : court.club === 'picklepoint' ? 'Picklepoint'
+        : court.club === 'mindbody' ? 'Mindbody'
         : 'Roketto';
       const locationKey = `${clubLabel} ${court.location}`;
       if (!map[locationKey] && court.address) {
@@ -755,6 +775,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         : court.club === 'nbc' ? 'NBC'
         : court.club === 'pro1' ? 'Pro1'
         : court.club === 'picklepoint' ? 'Picklepoint'
+        : court.club === 'mindbody' ? 'Mindbody'
         : 'Roketto';
       const locationKey = `${clubLabel} ${court.location}`;
 
@@ -771,6 +792,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
 
     const matrixByLocation: Record<string, {
       courts: string[];
+      courtTypes: Record<string, 'casual' | 'show' | undefined>;
       timeRows: Array<{
         hour: number;
         cells: Array<{ available: boolean; price: number | null }>;
@@ -782,6 +804,15 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
     for (const [locationKey, courtMap] of Object.entries(grouped)) {
       const courts = Object.keys(courtMap)
         .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+      // Build a mapping of court name to court type
+      const courtTypes: Record<string, 'casual' | 'show' | undefined> = {};
+      for (const courtName of courts) {
+        const courtEntries = courtMap[courtName] ?? [];
+        if (courtEntries.length > 0) {
+          courtTypes[courtName] = courtEntries[0].courtType;
+        }
+      }
 
       const timeRows = visibleHours.map((hour) => {
         const bucket = getBucketWindowFromHour(hour, bucketMinutes);
@@ -813,6 +844,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
 
       matrixByLocation[locationKey] = {
         courts,
+        courtTypes,
         timeRows,
       };
     }
@@ -829,23 +861,28 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
 
       for (const hour of visibleHours) {
         const bucket = getBucketWindowFromHour(hour, 30);
-        let count = 0;
-        const normalizedPrices: number[] = [];
+        const uniqueCourtIds = new Set<string>();
+        const priceByCourtId = new Map<string, number>();
 
         for (const timeSlot in timeSlots) {
           const sourceRange = parseTimeSlotRangeMinutes(timeSlot);
           if (!sourceRange || !rangesOverlap(sourceRange, bucket)) continue;
 
           const overlappingCourts = timeSlots[timeSlot];
-          count += overlappingCourts.length;
-
           for (const court of overlappingCourts) {
-            normalizedPrices.push(court.price);
+            uniqueCourtIds.add(court.courtId);
+
+            const currentMin = priceByCourtId.get(court.courtId);
+            if (currentMin === undefined || court.price < currentMin) {
+              priceByCourtId.set(court.courtId, court.price);
+            }
           }
         }
 
+        const normalizedPrices = Array.from(priceByCourtId.values());
+
         byBucket[String(hour)] = {
-          count,
+          count: uniqueCourtIds.size,
           minPrice: normalizedPrices.length > 0 ? Math.round(Math.min(...normalizedPrices) * 100) / 100 : null,
         };
       }
@@ -1456,7 +1493,9 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                         <tr className="venue-details-row">
                           <td colSpan={visibleHours.length + 1} className="venue-details-cell">
                             <div id={detailId} className="venue-details-panel">
-                              <div className="venue-details-title">Available Courts</div>
+                              <div className="venue-details-title-section">
+                                <div className="venue-details-title">Available Courts</div>
+                              </div>
                               {venueMatrix && venueMatrix.courts.length > 0 ? (
                                 <div className="venue-court-matrix-wrap">
                                   <table className="venue-court-matrix">
@@ -1465,13 +1504,15 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                                         <th className="venue-court-time-head">Time</th>
                                         {venueMatrix.courts.map((courtName) => (
                                           <th key={`${location}-${courtName}`} className="venue-court-column-head">
-                                            {courtName}
+                                            <span className="court-name">
+                                              {courtName}
+                                            </span>
                                           </th>
                                         ))}
                                       </tr>
                                     </thead>
                                     <tbody>
-                                      {venueMatrix.timeRows.map((timeRow) => (
+                                      {venueMatrix.timeRows.filter((timeRow) => timeRow.cells.some((c) => c.available)).map((timeRow) => (
                                         <tr key={`${location}-time-${timeRow.hour}`}>
                                           <th className="venue-court-time-cell">{formatHourCompact(timeRow.hour)}</th>
                                           {timeRow.cells.map((cell, courtIndex) => {
@@ -1488,6 +1529,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                                                 {cell.available ? (
                                                   <>
                                                     {cell.price !== null && <span className="venue-court-slot-price">${cell.price}</span>}
+                                                    {cell.price === null && <span className="venue-court-slot-open">Open</span>}
                                                     {cellHint && <span className="venue-court-slot-hint">{cellHint}</span>}
                                                   </>
                                                 ) : (

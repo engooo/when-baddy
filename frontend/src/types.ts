@@ -1,11 +1,12 @@
 export interface AggregatedCourt {
-  club: 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint';
+  club: 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint' | 'mindbody';
   location: string;
   locationId: string;
   address: string;
   suburb: string;
   courtName: string;
   courtId: string;
+  courtType?: 'casual' | 'show';
   timeSlot: string;
   status: 'available' | 'booked' | 'past';
   price: number;

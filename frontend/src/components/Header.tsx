@@ -19,7 +19,7 @@ export default function Header({ sportMode }: HeaderProps) {
           <span className="hero-header-title-accent">{isPickleball ? 'PICKLE?' : 'BADDY?'}</span>
         </h1>
         <p className="hero-header-subtitle">
-          {isPickleball ? 'FIND PICKLEBALL RUNS, COURTS AND OPEN PLAY NEAR YOU' : 'FIND AVAILABLE BADMINTON COURTS NEAR YOU'}
+          {isPickleball ? 'FIND AVAILABLE PICKLEBALL COURTS NEAR YOU' : 'FIND AVAILABLE BADMINTON COURTS NEAR YOU'}
         </p>
       </div>
 

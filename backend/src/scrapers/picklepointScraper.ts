@@ -5,8 +5,11 @@ const PICKLEPOINT_LOCATION = {
   name: 'Pickle Point',
   address: '101 Raleigh Rd, Milperra NSW 2214',
   suburb: 'Milperra',
-  resourceGroupId: 'c4cd3f8c-b1ac-2463-fcd8-b9a1c62d2564',
 };
+
+// Resource groups
+const CASUAL_COURTS_GROUP_ID = 'c4cd3f8c-b1ac-2463-fcd8-b9a1c62d2564';
+const SHOW_COURTS_GROUP_ID = '6d473444-1704-4cb8-9136-1c448fafe778';
 
 const BASE_URL = 'https://clubspark.net';
 const VENUE_PATH = 'Picklepoint';
@@ -34,6 +37,13 @@ interface PicklepointResource {
   Name: string;
   Days: PicklepointDay[];
 }
+
+type CourtType = 'casual' | 'show';
+
+const RESOURCE_GROUP_MAP: Record<string, CourtType> = {
+  'c4cd3f8c-b1ac-2463-fcd8-b9a1c62d2564': 'casual',
+  '6d473444-1704-4cb8-9136-1c448fafe778': 'show',
+};
 
 interface PicklepointResponse {
   Resources: PicklepointResource[];
@@ -93,9 +103,12 @@ function mapResourceToCourt(resource: PicklepointResource): Court {
       price: getSessionPrice(session),
     }));
 
+  const courtType = RESOURCE_GROUP_MAP[resource.ResourceGroupID];
+
   return {
     courtId: resource.ID,
     courtName: resource.Name,
+    courtType,
     availability,
   };
 }
@@ -110,8 +123,12 @@ export async function scrapePicklePoint(date?: { day: number; month: number; yea
   try {
     const data = await fetchVenueSessions(d);
 
+    // Fetch from BOTH casual and show courts resource groups
     const courts = data.Resources
-      .filter((resource) => resource.ResourceGroupID === PICKLEPOINT_LOCATION.resourceGroupId)
+      .filter((resource) => 
+        resource.ResourceGroupID === CASUAL_COURTS_GROUP_ID || 
+        resource.ResourceGroupID === SHOW_COURTS_GROUP_ID
+      )
       .filter((resource) => /court/i.test(resource.Name))
       .map(mapResourceToCourt);
 
