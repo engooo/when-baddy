@@ -310,8 +310,16 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
     });
   };
 
+  const sportScopedCourts = useMemo(() => {
+    return courts.filter((court) => {
+      const isPickleballClub = court.club === 'picklepoint' || court.club === 'mindbody';
+      if (sportMode === 'grid') return !isPickleballClub;
+      return isPickleballClub;
+    });
+  }, [courts, sportMode]);
+
   const allSuburbsInCourts = useMemo(() => {
-    const suburbs = new Set(courts.map((court) => court.suburb));
+    const suburbs = new Set(sportScopedCourts.map((court) => court.suburb));
     return Array.from(suburbs).sort((a, b) => {
       const aIndex = SUBURB_ORDER.indexOf(a);
       const bIndex = SUBURB_ORDER.indexOf(b);
@@ -320,7 +328,17 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
       if (bIndex === -1) return -1;
       return aIndex - bIndex;
     });
-  }, [courts]);
+  }, [sportScopedCourts]);
+
+  useEffect(() => {
+    setSelectedSuburbs((prev) => {
+      const next = prev.filter((suburb) => allSuburbsInCourts.includes(suburb));
+      if (next.length === prev.length && next.every((suburb, index) => suburb === prev[index])) {
+        return prev;
+      }
+      return next;
+    });
+  }, [allSuburbsInCourts]);
 
   const getBookingUrl = (locationKey: string): string | null => {
     const [yearStr, monthStr, dayStr] = selectedDate.split('-');
@@ -650,12 +668,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
   );
 
   const filteredCourts = useMemo(() => {
-    return courts.filter((court) => {
-      // Sport mode filter
-      const isPickleballClub = court.club === 'picklepoint' || court.club === 'mindbody';
-      if (sportMode === 'grid' && isPickleballClub) return false;
-      if (sportMode === 'map' && !isPickleballClub) return false;
-
+    return sportScopedCourts.filter((court) => {
       if (selectedSuburbs.length > 0 && !selectedSuburbs.includes(court.suburb)) {
         return false;
       }
@@ -681,7 +694,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
 
       return true;
     });
-  }, [courts, selectedSuburbs, startHour, endHour, sportMode]);
+  }, [sportScopedCourts, selectedSuburbs, startHour, endHour, sportMode]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

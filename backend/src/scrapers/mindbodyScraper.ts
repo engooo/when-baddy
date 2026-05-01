@@ -6,10 +6,13 @@ const LOCATION_ID = 1;
 const PICKLEBALL_30_SERVICE_ID = 120;
 const PREMIUM_PICKLEBALL_30_SERVICE_ID = 132;
 
+// Mindbody uses staffId as the schedule resource key.
+// For this venue, those staff IDs correspond to individual courts.
+
 const VENUE_INFO = {
   id: 'mindbody-ryde',
   name: 'Ryde Multisport & Racquet Centre',
-  address: 'tennisworldonline.com.au/bookacourt',
+  address: '16-18 Epping Rd, North Ryde NSW 2113',
   suburb: 'North Ryde',
 };
 
@@ -104,6 +107,8 @@ async function fetchHtml(path: string): Promise<string> {
 }
 
 function extractIncludedStaffIds(servicesHtml: string): string[] {
+  // The services payload contains the allowed resource pool for this widget.
+  // We bootstrap scraping from this list before calling /staff and /schedule.
   const tokenIndex = servicesHtml.indexOf('includedStaffIds');
   if (tokenIndex < 0) return [];
 
@@ -220,6 +225,8 @@ export async function scrapeMindbody(date?: { day: number; month: number; year: 
       throw new Error('No included staff IDs were found in Mindbody services payload');
     }
 
+    // The /staff endpoint requires a staffId query parameter.
+    // Any valid ID from includedStaffIds works as a seed for fetching the full list.
     const seedStaffId = includedStaffIds[0];
     const staffHtml = await fetchHtml(
       `/widgets/appointments/view/${WIDGET_ID}/staff?locationId=${LOCATION_ID}&serviceId=${PICKLEBALL_30_SERVICE_ID}&staffId=${seedStaffId}`
@@ -233,6 +240,7 @@ export async function scrapeMindbody(date?: { day: number; month: number; year: 
     const courts: Court[] = [];
 
     for (const member of staffMembers) {
+      // Each court/resource is queried by its staffId to get availability for that court.
       const scheduleHtml = await fetchHtml(
         `/widgets/appointments/view/${WIDGET_ID}/schedule?locationId=${LOCATION_ID}&serviceId=${PICKLEBALL_30_SERVICE_ID}&staffId=${member.id}`
       );
