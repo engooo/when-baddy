@@ -1,3 +1,4 @@
+import './env.js';
 import { fetchAllCourtData } from './service.js';
 
 async function main() {

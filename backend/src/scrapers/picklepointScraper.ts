@@ -1,3 +1,7 @@
+import axios, { type AxiosInstance } from 'axios';
+import { load } from 'cheerio';
+import { wrapper } from 'axios-cookiejar-support';
+import { CookieJar } from 'tough-cookie';
 import type { Court, CourtData, TimeSlot } from '../types.js';
 
 const PICKLEPOINT_LOCATION = {
@@ -13,6 +17,13 @@ const SHOW_COURTS_GROUP_ID = '6d473444-1704-4cb8-9136-1c448fafe778';
 
 const BASE_URL = 'https://clubspark.net';
 const VENUE_PATH = 'Picklepoint';
+const BOOKING_PATH = `${VENUE_PATH.toLowerCase()}/Booking/BookByDate`;
+const PICKLEPOINT_EMAIL = process.env.PICKLEPOINT_EMAIL;
+const PICKLEPOINT_PASSWORD = process.env.PICKLEPOINT_PASSWORD;
+const SESSION_CACHE_MS = 25 * 60 * 1000;
+
+let authenticatedClientPromise: Promise<AxiosInstance> | null = null;
+let authenticatedClientCreatedAt = 0;
 
 interface PicklepointSession {
   ID: string;
@@ -49,6 +60,149 @@ interface PicklepointResponse {
   Resources: PicklepointResource[];
 }
 
+function isSignInPage(html: string): boolean {
+  return /Account\/SignIn|name="EmailAddress"|name="Password"/i.test(html);
+}
+
+function getResponseUrl(response: { request?: { res?: { responseUrl?: string } } }): string | undefined {
+  return response.request?.res?.responseUrl;
+}
+
+async function completeWsFedHandshake(
+  client: AxiosInstance,
+  html: string,
+  currentUrl: string
+): Promise<{ html: string; url: string }> {
+  if (!/\/issue\/wsfed/i.test(currentUrl) && !/name="wresult"|name="wctx"/i.test(html)) {
+    return { html, url: currentUrl };
+  }
+
+  const $ = load(html);
+  const hiddenForm = $('form[name="hiddenform"][method="POST"], form[method="post"]').first();
+  if (!hiddenForm.length) {
+    throw new Error('Picklepoint WS-Fed handoff form not found after login.');
+  }
+
+  const handoffFields: Record<string, string> = {};
+  hiddenForm.find('input[name]').each((_, elem) => {
+    const name = $(elem).attr('name');
+    if (!name) return;
+    handoffFields[name] = $(elem).attr('value') ?? '';
+  });
+
+  const handoffAction = hiddenForm.attr('action')
+    ? new URL(hiddenForm.attr('action')!, currentUrl).toString()
+    : BASE_URL;
+
+  const handoffPayload = new URLSearchParams(handoffFields);
+  const handoffResponse = await client.post<string>(handoffAction, handoffPayload.toString(), {
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Origin: BASE_URL,
+      Referer: currentUrl,
+    },
+  });
+
+  const finalHtml = typeof handoffResponse.data === 'string' ? handoffResponse.data : '';
+  const finalUrl = getResponseUrl(handoffResponse) ?? handoffAction;
+  return { html: finalHtml, url: finalUrl };
+}
+
+function getAuthenticatedClient(): Promise<AxiosInstance> {
+  if (!PICKLEPOINT_EMAIL || !PICKLEPOINT_PASSWORD) {
+    throw new Error('Missing Picklepoint credentials. Set PICKLEPOINT_EMAIL and PICKLEPOINT_PASSWORD.');
+  }
+
+  if (authenticatedClientPromise && Date.now() - authenticatedClientCreatedAt < SESSION_CACHE_MS) {
+    return authenticatedClientPromise;
+  }
+
+  authenticatedClientPromise = (async () => {
+    try {
+      const cookieJar = new CookieJar();
+      const client: AxiosInstance = wrapper(
+        axios.create({
+          jar: cookieJar,
+          withCredentials: true,
+          validateStatus: () => true,
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+            Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+          },
+        })
+      );
+
+      const signInUrl = `${BASE_URL}/${VENUE_PATH}/Account/SignIn?returnUrl=${encodeURIComponent(`https://${new URL(BASE_URL).host}/${BOOKING_PATH}`)}`;
+      const signInPageResponse = await client.get<string>(signInUrl);
+
+      if (signInPageResponse.status >= 400 || typeof signInPageResponse.data !== 'string') {
+        throw new Error(`Picklepoint sign-in page request failed with HTTP ${signInPageResponse.status}`);
+      }
+
+      const signInPageFinalUrl = getResponseUrl(signInPageResponse) ?? signInUrl;
+
+      const $ = load(signInPageResponse.data);
+      const form = $('form[action][method="post"]').has('input[name="EmailAddress"]').first();
+      if (!form.length) {
+        throw new Error('Picklepoint sign-in form was not found on the login page.');
+      }
+
+      const hiddenFields: Record<string, string> = {};
+      form.find('input[type="hidden"][name]').each((_, elem) => {
+        const name = $(elem).attr('name');
+        if (!name) return;
+        hiddenFields[name] = $(elem).attr('value') ?? '';
+      });
+
+      const formAction = form.attr('action')
+        ? new URL(form.attr('action')!, signInPageFinalUrl).toString()
+        : `${BASE_URL}/account/signin`;
+
+      const loginPayload = new URLSearchParams({
+        ...hiddenFields,
+        EmailAddress: PICKLEPOINT_EMAIL,
+        Password: PICKLEPOINT_PASSWORD,
+        RememberMe: 'true',
+      });
+
+      const loginResponse = await client.post<string>(formAction, loginPayload.toString(), {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          Origin: BASE_URL,
+          Referer: signInUrl,
+        },
+      });
+
+      if (loginResponse.status >= 400) {
+        throw new Error(`Picklepoint login request failed with HTTP ${loginResponse.status}`);
+      }
+
+      const bookingPageResponse = await client.get<string>(`${BASE_URL}/${BOOKING_PATH}`);
+      if (bookingPageResponse.status >= 400 || typeof bookingPageResponse.data !== 'string') {
+        throw new Error('Picklepoint booking page request failed after login.');
+      }
+
+      const postHandshake = await completeWsFedHandshake(
+        client,
+        bookingPageResponse.data,
+        getResponseUrl(bookingPageResponse) ?? `${BASE_URL}/${BOOKING_PATH}`
+      );
+
+      if (isSignInPage(postHandshake.html)) {
+        throw new Error('Picklepoint login did not establish an authenticated booking session.');
+      }
+
+      authenticatedClientCreatedAt = Date.now();
+      return client;
+    } catch (error) {
+      authenticatedClientPromise = null;
+      throw error;
+    }
+  })();
+
+  return authenticatedClientPromise;
+}
+
 function formatDateYYYYMMDD(date: { day: number; month: number; year: number }): string {
   return `${date.year}-${String(date.month).padStart(2, '0')}-${String(date.day).padStart(2, '0')}`;
 }
@@ -79,19 +233,24 @@ async function fetchVenueSessions(date: { day: number; month: number; year: numb
     _: Date.now().toString(),
   });
 
-  const response = await fetch(`${BASE_URL}/v0/VenueBooking/${VENUE_PATH}/GetVenueSessions?${params.toString()}`, {
+  const client = await getAuthenticatedClient();
+  const endpoint = `${BASE_URL}/v0/VenueBooking/${VENUE_PATH}/GetVenueSessions?${params.toString()}`;
+
+  const response = await client.get<PicklepointResponse>(endpoint, {
     headers: {
-      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
       Accept: 'application/json, text/plain, */*',
-      Referer: `${BASE_URL.toLowerCase()}/${VENUE_PATH.toLowerCase()}/Booking/BookByDate`,
+      Referer: `${BASE_URL}/${BOOKING_PATH}`,
     },
   });
 
-  if (!response.ok) {
+  if (response.status < 200 || response.status >= 300 || !response.data) {
+    // fetch link to picklepoint sessions API to debug
+    console.error(`Failed to fetch Picklepoint sessions for ${formattedDate}: ${response.status}`);
+    console.error(`URL: ${endpoint}`);
     throw new Error(`Picklepoint sessions request failed with HTTP ${response.status}`);
   }
 
-  return response.json() as Promise<PicklepointResponse>;
+  return response.data;
 }
 
 function mapResourceToCourt(resource: PicklepointResource): Court {
