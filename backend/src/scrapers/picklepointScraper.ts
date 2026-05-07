@@ -223,8 +223,72 @@ function isAvailableSession(session: PicklepointSession): boolean {
   return session.Category === 0 && session.Capacity > 0 && session.EndTime > session.StartTime;
 }
 
+async function fetchVenueSessionsUnauthenticated(
+  date: { day: number; month: number; year: number }
+): Promise<PicklepointResponse | null> {
+  const formattedDate = formatDateYYYYMMDD(date);
+  const params = new URLSearchParams({
+    resourceID: '',
+    startDate: formattedDate,
+    endDate: formattedDate,
+    roleId: '',
+    _: Date.now().toString(),
+  });
+
+  try {
+    const cookieJar = new CookieJar();
+    const client: AxiosInstance = wrapper(
+      axios.create({
+        jar: cookieJar,
+        withCredentials: false,
+        validateStatus: () => true,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
+          Accept: 'application/json, text/plain, */*',
+        },
+      })
+    );
+
+    const endpoint = `${BASE_URL}/v0/VenueBooking/${VENUE_PATH}/GetVenueSessions?${params.toString()}`;
+
+    const response = await client.get<PicklepointResponse>(endpoint, {
+      headers: {
+        Accept: 'application/json, text/plain, */*',
+        Referer: `${BASE_URL}/${BOOKING_PATH}`,
+      },
+    });
+
+    if (response.status >= 200 && response.status < 300 && response.data) {
+      return response.data;
+    }
+    return null;
+  } catch (error) {
+    return null;
+  }
+}
+
 async function fetchVenueSessions(date: { day: number; month: number; year: number }): Promise<PicklepointResponse> {
   const formattedDate = formatDateYYYYMMDD(date);
+
+  // First, try fetching without authentication
+  console.log(`[Picklepoint] Attempting unauthenticated access for ${formattedDate}`);
+  const unauthedData = await fetchVenueSessionsUnauthenticated(date);
+  if (unauthedData) {
+    console.log('[Picklepoint] ✓ Public access successful');
+    return unauthedData;
+  }
+
+  console.log('[Picklepoint] ✗ Public access unavailable, attempting authenticated access...');
+
+  // Check if credentials are available
+  if (!PICKLEPOINT_EMAIL || !PICKLEPOINT_PASSWORD) {
+    throw new Error(
+      'Picklepoint requires sign-in but PICKLEPOINT_EMAIL and/or PICKLEPOINT_PASSWORD are not set. ' +
+      'Provide credentials in environment variables.'
+    );
+  }
+
+  // Fall back to authenticated session
   const params = new URLSearchParams({
     resourceID: '',
     startDate: formattedDate,
@@ -244,12 +308,12 @@ async function fetchVenueSessions(date: { day: number; month: number; year: numb
   });
 
   if (response.status < 200 || response.status >= 300 || !response.data) {
-    // fetch link to picklepoint sessions API to debug
-    console.error(`Failed to fetch Picklepoint sessions for ${formattedDate}: ${response.status}`);
-    console.error(`URL: ${endpoint}`);
+    console.error(`[Picklepoint] Failed to fetch for ${formattedDate}: HTTP ${response.status}`);
+    console.error(`[Picklepoint] URL: ${endpoint}`);
     throw new Error(`Picklepoint sessions request failed with HTTP ${response.status}`);
   }
 
+  console.log('[Picklepoint] ✓ Authenticated access successful');
   return response.data;
 }
 

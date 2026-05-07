@@ -1362,11 +1362,12 @@
   cursor: pointer;
   box-shadow: none;
   outline: none;
-  transition: color 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease;
 }
 
 .location-expand-btn:hover {
-  color: #1d2e26;
+  background: var(--brand-green-tint);
+  color: var(--brand-green-ink);
 }
 
 .location-expand-btn:focus-visible {
