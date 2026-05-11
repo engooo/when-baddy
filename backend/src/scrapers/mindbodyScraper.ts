@@ -1,19 +1,30 @@
 import type { Court, CourtData, TimeSlot } from '../types.js';
 
 const MINDBODY_BASE_URL = 'https://go.mindbodyonline.com/book';
-const WIDGET_ID = '7b9803fef1';
-const LOCATION_ID = 1;
-const PICKLEBALL_30_SERVICE_ID = 120;
-const PREMIUM_PICKLEBALL_30_SERVICE_ID = 132;
+const RYDE_WIDGET_ID = '7b9803fef1';
+const RYDE_LOCATION_ID = 1;
+const RYDE_PICKLEBALL_30_SERVICE_ID = 120;
+const RYDE_PREMIUM_PICKLEBALL_30_SERVICE_ID = 132;
+const CAMELLIA_WIDGET_ID = 'b2175829c93';
+const CAMELLIA_LOCATION_ID = 1;
+const CAMELLIA_PICKLEBALL_60_SERVICE_ID = 88;
+const CAMELLIA_SEED_STAFF_ID = '100000007';
 
 // Mindbody uses staffId as the schedule resource key.
 // For this venue, those staff IDs correspond to individual courts.
 
-const VENUE_INFO = {
+const RYDE_VENUE_INFO = {
   id: 'mindbody-ryde',
   name: 'Ryde Multisport & Racquet Centre',
   address: '16-18 Epping Rd, North Ryde NSW 2113',
   suburb: 'North Ryde',
+};
+
+const CAMELLIA_VENUE_INFO = {
+  id: 'mindbody-camellia',
+  name: 'Camellia Indoor Sports Centre',
+  address: '9 Grand Avenue, Camellia NSW 2142',
+  suburb: 'Camellia',
 };
 
 function getSydneyTodayParts(): { day: number; month: number; year: number } {
@@ -79,6 +90,19 @@ function getRydePremiumSlotPrice(date: string, startMinutes: number, durationMin
   // Peak: weekdays 5pm–10pm => $30/hr. All other times (off-peak + weekends) => $25/hr.
   const isWeekdayPeak = !isWeekend && startMinutes >= 17 * 60 && startMinutes < 22 * 60;
   const hourlyRate = isWeekdayPeak ? 30 : 25;
+  return Math.round(hourlyRate * (durationMinutes / 60) * 100) / 100;
+}
+
+function getCamelliaHourlyRate(date: string, startMinutes: number): number {
+  const [yearStr, monthStr, dayStr] = date.split('-');
+  const dt = new Date(Number(yearStr), Number(monthStr) - 1, Number(dayStr));
+  const isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
+  const isWeekdayOffPeak = !isWeekend && startMinutes >= 7 * 60 && startMinutes < 17 * 60;
+  return isWeekdayOffPeak ? 24 : 30;
+}
+
+function getCamelliaSlotPrice(date: string, startMinutes: number, durationMinutes: number): number {
+  const hourlyRate = getCamelliaHourlyRate(date, startMinutes);
   return Math.round(hourlyRate * (durationMinutes / 60) * 100) / 100;
 }
 
@@ -177,13 +201,17 @@ function extractBaseStartTimes(scheduleHtml: string, date: string): number[] {
 
 type PriceFn = (date: string, startMinutes: number, durationMinutes: number) => number;
 
-function buildDerivedSlots(baseStarts: number[], date: string, priceFn: PriceFn = getRydeSlotPrice): TimeSlot[] {
+function buildDerivedSlots(
+  baseStarts: number[],
+  date: string,
+  priceFn: PriceFn = getRydeSlotPrice,
+  durations: number[] = [30, 60, 90, 120]
+): TimeSlot[] {
   const availableSet = new Set(baseStarts);
   const emitted = new Set<string>();
   const slots: TimeSlot[] = [];
 
-  // Build 30/60/90/120 minute windows from consecutive 30-minute starts.
-  const durations = [30, 60, 90, 120];
+  // Build availability windows from consecutive 30-minute starts.
   for (const start of baseStarts) {
     for (const duration of durations) {
       const segments = duration / 30;
@@ -213,12 +241,39 @@ function buildDerivedSlots(baseStarts: number[], date: string, priceFn: PriceFn 
   return slots;
 }
 
+async function scrapeCamelliaLocation(targetDate: string): Promise<{ courts: Court[]; serviceCount: number }> {
+  const staffHtml = await fetchHtml(
+    `/widgets/appointments/view/${CAMELLIA_WIDGET_ID}/staff?locationId=${CAMELLIA_LOCATION_ID}&serviceId=${CAMELLIA_PICKLEBALL_60_SERVICE_ID}&staffId=${CAMELLIA_SEED_STAFF_ID}`
+  );
+
+  const staffMembers = extractStaffMembers(staffHtml);
+  const courts: Court[] = [];
+
+  for (const member of staffMembers) {
+    const scheduleHtml = await fetchHtml(
+      `/widgets/appointments/view/${CAMELLIA_WIDGET_ID}/schedule?locationId=${CAMELLIA_LOCATION_ID}&serviceId=${CAMELLIA_PICKLEBALL_60_SERVICE_ID}&staffId=${member.id}`
+    );
+
+    const baseStarts = extractBaseStartTimes(scheduleHtml, targetDate);
+    const availability = buildDerivedSlots(baseStarts, targetDate, getCamelliaSlotPrice, [60, 90, 120]);
+
+    courts.push({
+      courtId: member.id,
+      courtName: member.name,
+      availability,
+    });
+  }
+
+  return { courts, serviceCount: staffMembers.length };
+}
+
 export async function scrapeMindbody(date?: { day: number; month: number; year: number }): Promise<CourtData> {
   const d = date ?? getSydneyTodayParts();
   const targetDate = formatDateYYYYMMDD(d);
+  const locations: CourtData['locations'] = [];
 
   try {
-    const servicesHtml = await fetchHtml(`/widgets/appointments/view/${WIDGET_ID}/services`);
+    const servicesHtml = await fetchHtml(`/widgets/appointments/view/${RYDE_WIDGET_ID}/services`);
     const includedStaffIds = extractIncludedStaffIds(servicesHtml);
 
     if (includedStaffIds.length === 0) {
@@ -229,7 +284,7 @@ export async function scrapeMindbody(date?: { day: number; month: number; year: 
     // Any valid ID from includedStaffIds works as a seed for fetching the full list.
     const seedStaffId = includedStaffIds[0];
     const staffHtml = await fetchHtml(
-      `/widgets/appointments/view/${WIDGET_ID}/staff?locationId=${LOCATION_ID}&serviceId=${PICKLEBALL_30_SERVICE_ID}&staffId=${seedStaffId}`
+      `/widgets/appointments/view/${RYDE_WIDGET_ID}/staff?locationId=${RYDE_LOCATION_ID}&serviceId=${RYDE_PICKLEBALL_30_SERVICE_ID}&staffId=${seedStaffId}`
     );
 
     const parsedMembers = extractStaffMembers(staffHtml);
@@ -242,7 +297,7 @@ export async function scrapeMindbody(date?: { day: number; month: number; year: 
     for (const member of staffMembers) {
       // Each court/resource is queried by its staffId to get availability for that court.
       const scheduleHtml = await fetchHtml(
-        `/widgets/appointments/view/${WIDGET_ID}/schedule?locationId=${LOCATION_ID}&serviceId=${PICKLEBALL_30_SERVICE_ID}&staffId=${member.id}`
+        `/widgets/appointments/view/${RYDE_WIDGET_ID}/schedule?locationId=${RYDE_LOCATION_ID}&serviceId=${RYDE_PICKLEBALL_30_SERVICE_ID}&staffId=${member.id}`
       );
 
       const baseStarts = extractBaseStartTimes(scheduleHtml, targetDate);
@@ -257,7 +312,7 @@ export async function scrapeMindbody(date?: { day: number; month: number; year: 
 
     // Scrape Premium Pickleball courts (service 132, Courts 1–4, $25/$30/hr)
     const premiumStaffHtml = await fetchHtml(
-      `/widgets/appointments/view/${WIDGET_ID}/staff?locationId=${LOCATION_ID}&serviceId=${PREMIUM_PICKLEBALL_30_SERVICE_ID}&staffId=${seedStaffId}`
+      `/widgets/appointments/view/${RYDE_WIDGET_ID}/staff?locationId=${RYDE_LOCATION_ID}&serviceId=${RYDE_PREMIUM_PICKLEBALL_30_SERVICE_ID}&staffId=${seedStaffId}`
     );
     const premiumMembers = extractStaffMembers(premiumStaffHtml);
     const premiumMemberList = premiumMembers.length > 0
@@ -269,7 +324,7 @@ export async function scrapeMindbody(date?: { day: number; month: number; year: 
       if (courts.some((c) => c.courtId === member.id)) continue;
 
       const scheduleHtml = await fetchHtml(
-        `/widgets/appointments/view/${WIDGET_ID}/schedule?locationId=${LOCATION_ID}&serviceId=${PREMIUM_PICKLEBALL_30_SERVICE_ID}&staffId=${member.id}`
+        `/widgets/appointments/view/${RYDE_WIDGET_ID}/schedule?locationId=${RYDE_LOCATION_ID}&serviceId=${RYDE_PREMIUM_PICKLEBALL_30_SERVICE_ID}&staffId=${member.id}`
       );
 
       const baseStarts = extractBaseStartTimes(scheduleHtml, targetDate);
@@ -285,28 +340,39 @@ export async function scrapeMindbody(date?: { day: number; month: number; year: 
     const availableSlots = courts.reduce((sum, court) => sum + court.availability.length, 0);
     console.log(`Mindbody (Ryde): ${courts.length} courts (${staffMembers.length} standard + ${premiumMemberList.length} premium), ${availableSlots} derived sessions on ${targetDate}`);
 
-    return {
-      club: 'mindbody',
-      date: targetDate,
-      locations: [
-        {
-          locationId: VENUE_INFO.id,
-          locationName: VENUE_INFO.name,
-          address: VENUE_INFO.address,
-          suburb: VENUE_INFO.suburb,
-          courts,
-        },
-      ],
-      scrapedAt: new Date().toISOString(),
-    };
+    locations.push({
+      locationId: RYDE_VENUE_INFO.id,
+      locationName: RYDE_VENUE_INFO.name,
+      address: RYDE_VENUE_INFO.address,
+      suburb: RYDE_VENUE_INFO.suburb,
+      courts,
+    });
   } catch (error) {
-    console.error('Error scraping Mindbody venue:', error);
-
-    return {
-      club: 'mindbody',
-      date: targetDate,
-      locations: [],
-      scrapedAt: new Date().toISOString(),
-    };
+    console.error('Error scraping Mindbody Ryde venue:', error);
   }
+
+  try {
+    const { courts, serviceCount } = await scrapeCamelliaLocation(targetDate);
+    const availableSlots = courts.reduce((sum, court) => sum + court.availability.length, 0);
+    console.log(`Mindbody (Camellia): ${courts.length} courts, ${availableSlots} derived sessions on ${targetDate}`);
+
+    locations.push({
+      locationId: CAMELLIA_VENUE_INFO.id,
+      locationName: CAMELLIA_VENUE_INFO.name,
+      address: CAMELLIA_VENUE_INFO.address,
+      suburb: CAMELLIA_VENUE_INFO.suburb,
+      courts,
+    });
+
+    console.log(`Mindbody (Camellia): staff list contained ${serviceCount} courts`);
+  } catch (error) {
+    console.error('Error scraping Mindbody Camellia venue:', error);
+  }
+
+  return {
+    club: 'mindbody',
+    date: targetDate,
+    locations,
+    scrapedAt: new Date().toISOString(),
+  };
 }

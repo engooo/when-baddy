@@ -117,7 +117,7 @@ function App() {
       <footer className="app-footer">
         <p>
           {sportMode === 'grid'
-            ? 'Aggregating courts from Alpha Badminton, NBC Badminton, Pro1 Badminton, Roketto & Ryde Multisport'
+            ? 'Aggregating courts from Alpha Badminton, NBC Badminton, Pro1 Badminton, Roketto, Ryde Multisport & Camellia Indoor Sports'
             : 'Pickleball preview mode — venue coverage and live court feeds are still being expanded'}
         </p>
       </footer>

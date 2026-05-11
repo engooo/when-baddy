@@ -59,6 +59,21 @@ const SUBURB_ORDER = [
   'Alexandria',
 ];
 
+const CAMELLIA_MINDBODY_LOCATION_KEY = 'Mindbody Camellia Indoor Sports Centre';
+
+function toPerThirtyMinutePrice(locationKey: string, totalSlotPrice: number, slotRangeMinutes: number | null): number {
+  if (locationKey !== CAMELLIA_MINDBODY_LOCATION_KEY || !Number.isFinite(totalSlotPrice) || totalSlotPrice <= 0) {
+    return totalSlotPrice;
+  }
+
+  if (slotRangeMinutes === null || slotRangeMinutes <= 0) {
+    return totalSlotPrice;
+  }
+
+  const halfHourSegments = Math.max(1, Math.round(slotRangeMinutes / 30));
+  return Math.round((totalSlotPrice / halfHourSegments) * 100) / 100;
+}
+
 function clampHour(value: number): number {
   if (!Number.isFinite(value)) return DEFAULT_START_HOUR;
   if (value < DEFAULT_START_HOUR) return DEFAULT_START_HOUR;
@@ -216,10 +231,22 @@ function parseLocationKey(locationKey: string): {
   }
 
   if (locationKey.startsWith('Mindbody ')) {
+    const mindbodyLocationName = locationKey.replace(/^Mindbody\s+/, '');
+    if (mindbodyLocationName === 'Camellia Indoor Sports Centre') {
+      return {
+        venueKey: 'mindbody',
+        venueName: 'Camellia Indoor Sports Centre',
+        locationName: mindbodyLocationName,
+        logoSrc: null,
+        badgeText: 'CI',
+        badgeClass: 'venue-logo-mindbody',
+      };
+    }
+
     return {
       venueKey: 'mindbody',
       venueName: 'Ryde Multisport & Racquet Centre',
-      locationName: locationKey.replace(/^Mindbody\s+/, ''),
+      locationName: mindbodyLocationName,
       logoSrc: '/assets/venue-logos/ryde_logo.png',
       badgeText: 'MB',
       badgeClass: 'venue-logo-mindbody',
@@ -418,6 +445,10 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
     }
 
     if (court.club === 'mindbody') {
+      if (court.locationId === 'mindbody-camellia') {
+        return 'https://go.mindbodyonline.com/book/widgets/appointments/view/b2175829c93/services';
+      }
+
       return 'https://go.mindbodyonline.com/book/widgets/appointments/view/7b9803fef1/services';
     }
 
@@ -844,8 +875,10 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
             if (!overlaps) continue;
 
             available = true;
-            if (entry.price > 0 && (minPrice === null || entry.price < minPrice)) {
-              minPrice = entry.price;
+            const slotRangeMinutes = range ? (range.end - range.start) : null;
+            const normalizedPrice = toPerThirtyMinutePrice(locationKey, entry.price, slotRangeMinutes);
+            if (normalizedPrice > 0 && (minPrice === null || normalizedPrice < minPrice)) {
+              minPrice = normalizedPrice;
             }
           }
 
@@ -885,9 +918,12 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
           for (const court of overlappingCourts) {
             uniqueCourtIds.add(court.courtId);
 
+            const slotRangeMinutes = sourceRange.end - sourceRange.start;
+            const normalizedPrice = toPerThirtyMinutePrice(location, court.price, slotRangeMinutes);
+
             const currentMin = priceByCourtId.get(court.courtId);
-            if (currentMin === undefined || court.price < currentMin) {
-              priceByCourtId.set(court.courtId, court.price);
+            if (currentMin === undefined || normalizedPrice < currentMin) {
+              priceByCourtId.set(court.courtId, normalizedPrice);
             }
           }
         }
