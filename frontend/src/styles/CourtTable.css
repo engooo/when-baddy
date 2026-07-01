@@ -59,6 +59,9 @@
 }
 
 .open-filters-btn {
+  width: 100%;
+  height: 42px;
+  border-radius: 12px;
   border: 1px solid #cfd6d1;
   background: #ffffff;
   color: #42524a;
@@ -124,6 +127,47 @@
 
 .top-refresh-btn {
   display: none;
+}
+
+.day-selector-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  overflow: visible;
+  position: relative;
+}
+
+.day-selector {
+  display: flex;
+  justify-content: flex-start;
+  gap: 0.7rem;
+  overflow-x: auto;
+  padding: 0.5rem 0 0.4rem;
+  scroll-snap-type: x mandatory;
+  scroll-padding-inline: 0;
+  max-width: calc(100vw - 120px);
+  min-width: 0;
+  margin-top: 0.5rem;
+}
+
+.day-selector-right-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  flex-shrink: 0;
+  margin-left: 0.9rem;
+}
+
+.date-picker-row {
+  width: 100%;
+  max-width: 100%;
+  margin: 0.32rem auto 0.35rem;
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.55rem;
+  align-items: stretch;
 }
 
 .filters-modal-backdrop {
@@ -2542,7 +2586,7 @@
 
 @media (max-width: 480px) {
   .date-picker-row {
-    margin: 0 auto 0.12rem;
+    margin: 0.22rem auto 0.12rem;
     gap: 0.4rem;
     grid-template-columns: 1fr 1fr;
   }

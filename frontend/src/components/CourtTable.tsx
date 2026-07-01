@@ -321,7 +321,8 @@ function parseLocationKey(locationKey: string): {
 function getPickleballVenueType(locationKey: string): 'indoor' | 'outdoor' | null {
   if (
     locationKey === 'Mindbody Camellia Indoor Sports Centre' ||
-    locationKey === 'Mindbody Galuwa Recreation Centre - Indoor'
+    locationKey === 'Mindbody Galuwa Recreation Centre - Indoor' ||
+    locationKey.startsWith('NBC ')
   ) {
     return 'indoor';
   }
@@ -329,8 +330,7 @@ function getPickleballVenueType(locationKey: string): 'indoor' | 'outdoor' | nul
   if (
     locationKey === 'Mindbody Ryde Multisport & Racquet Centre' ||
     locationKey === 'Mindbody Galuwa Recreation Centre - Outdoor' ||
-    locationKey.startsWith('Picklepoint ') ||
-    locationKey === 'NBC Olympic Park Pickleball'
+    locationKey.startsWith('Picklepoint ')
   ) {
     return 'outdoor';
   }
