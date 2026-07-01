@@ -9,6 +9,12 @@ const CAMELLIA_WIDGET_ID = 'b2175829c93';
 const CAMELLIA_LOCATION_ID = 1;
 const CAMELLIA_PICKLEBALL_60_SERVICE_ID = 88;
 const CAMELLIA_SEED_STAFF_ID = '100000007';
+const GALUWA_WIDGET_ID = '974479625ad';
+const GALUWA_LOCATION_ID = 1;
+const GALUWA_INDOOR_PICKLEBALL_30_SERVICE_ID = 78;
+const GALUWA_INDOOR_SEED_STAFF_ID = '100000012';
+const GALUWA_OUTDOOR_PICKLEBALL_30_SERVICE_ID = 82;
+const GALUWA_OUTDOOR_SEED_STAFF_ID = '100000016';
 
 // Mindbody uses staffId as the schedule resource key.
 // For this venue, those staff IDs correspond to individual courts.
@@ -25,6 +31,21 @@ const CAMELLIA_VENUE_INFO = {
   name: 'Camellia Indoor Sports Centre',
   address: '9 Grand Avenue, Camellia NSW 2142',
   suburb: 'Camellia',
+};
+
+const GALUWA_VENUE_INFO = {
+  indoor: {
+    id: 'mindbody-galuwa-indoor',
+    name: 'Galuwa Recreation Centre - Indoor',
+    address: '180 River Rd, Lane Cove NSW 2066',
+    suburb: 'Lane Cove',
+  },
+  outdoor: {
+    id: 'mindbody-galuwa-outdoor',
+    name: 'Galuwa Recreation Centre - Outdoor',
+    address: '180 River Rd, Lane Cove NSW 2066',
+    suburb: 'Lane Cove',
+  },
 };
 
 function getSydneyTodayParts(): { day: number; month: number; year: number } {
@@ -103,6 +124,25 @@ function getCamelliaHourlyRate(date: string, startMinutes: number): number {
 
 function getCamelliaSlotPrice(date: string, startMinutes: number, durationMinutes: number): number {
   const hourlyRate = getCamelliaHourlyRate(date, startMinutes);
+  return Math.round(hourlyRate * (durationMinutes / 60) * 100) / 100;
+}
+
+function isWeekday(date: string): boolean {
+  const [yearStr, monthStr, dayStr] = date.split('-');
+  const dt = new Date(Number(yearStr), Number(monthStr) - 1, Number(dayStr));
+  const day = dt.getDay();
+  return day !== 0 && day !== 6;
+}
+
+function getGaluwaIndoorSlotPrice(date: string, startMinutes: number, durationMinutes: number): number {
+  const isPeak = !isWeekday(date) || startMinutes >= 17 * 60;
+  const hourlyRate = isPeak ? 37 : 28;
+  return Math.round(hourlyRate * (durationMinutes / 60) * 100) / 100;
+}
+
+function getGaluwaOutdoorSlotPrice(date: string, startMinutes: number, durationMinutes: number): number {
+  const isPeak = !isWeekday(date) || startMinutes >= 17 * 60;
+  const hourlyRate = isPeak ? 22 : 19;
   return Math.round(hourlyRate * (durationMinutes / 60) * 100) / 100;
 }
 
@@ -267,6 +307,37 @@ async function scrapeCamelliaLocation(targetDate: string): Promise<{ courts: Cou
   return { courts, serviceCount: staffMembers.length };
 }
 
+async function scrapeGaluwaLocation(
+  targetDate: string,
+  serviceId: number,
+  seedStaffId: string,
+  priceFn: PriceFn
+): Promise<{ courts: Court[]; serviceCount: number }> {
+  const staffHtml = await fetchHtml(
+    `/widgets/appointments/view/${GALUWA_WIDGET_ID}/staff?locationId=${GALUWA_LOCATION_ID}&serviceId=${serviceId}&staffId=${seedStaffId}`
+  );
+
+  const staffMembers = extractStaffMembers(staffHtml);
+  const courts: Court[] = [];
+
+  for (const member of staffMembers) {
+    const scheduleHtml = await fetchHtml(
+      `/widgets/appointments/view/${GALUWA_WIDGET_ID}/schedule?locationId=${GALUWA_LOCATION_ID}&serviceId=${serviceId}&staffId=${member.id}`
+    );
+
+    const baseStarts = extractBaseStartTimes(scheduleHtml, targetDate);
+    const availability = buildDerivedSlots(baseStarts, targetDate, priceFn);
+
+    courts.push({
+      courtId: member.id,
+      courtName: member.name,
+      availability,
+    });
+  }
+
+  return { courts, serviceCount: staffMembers.length };
+}
+
 export async function scrapeMindbody(date?: { day: number; month: number; year: number }): Promise<CourtData> {
   const d = date ?? getSydneyTodayParts();
   const targetDate = formatDateYYYYMMDD(d);
@@ -367,6 +438,52 @@ export async function scrapeMindbody(date?: { day: number; month: number; year: 
     console.log(`Mindbody (Camellia): staff list contained ${serviceCount} courts`);
   } catch (error) {
     console.error('Error scraping Mindbody Camellia venue:', error);
+  }
+
+  try {
+    const { courts, serviceCount } = await scrapeGaluwaLocation(
+      targetDate,
+      GALUWA_INDOOR_PICKLEBALL_30_SERVICE_ID,
+      GALUWA_INDOOR_SEED_STAFF_ID,
+      getGaluwaIndoorSlotPrice
+    );
+    const availableSlots = courts.reduce((sum, court) => sum + court.availability.length, 0);
+    console.log(`Mindbody (Galuwa Indoor): ${courts.length} courts, ${availableSlots} derived sessions on ${targetDate}`);
+
+    locations.push({
+      locationId: GALUWA_VENUE_INFO.indoor.id,
+      locationName: GALUWA_VENUE_INFO.indoor.name,
+      address: GALUWA_VENUE_INFO.indoor.address,
+      suburb: GALUWA_VENUE_INFO.indoor.suburb,
+      courts,
+    });
+
+    console.log(`Mindbody (Galuwa Indoor): staff list contained ${serviceCount} courts`);
+  } catch (error) {
+    console.error('Error scraping Mindbody Galuwa indoor venue:', error);
+  }
+
+  try {
+    const { courts, serviceCount } = await scrapeGaluwaLocation(
+      targetDate,
+      GALUWA_OUTDOOR_PICKLEBALL_30_SERVICE_ID,
+      GALUWA_OUTDOOR_SEED_STAFF_ID,
+      getGaluwaOutdoorSlotPrice
+    );
+    const availableSlots = courts.reduce((sum, court) => sum + court.availability.length, 0);
+    console.log(`Mindbody (Galuwa Outdoor): ${courts.length} courts, ${availableSlots} derived sessions on ${targetDate}`);
+
+    locations.push({
+      locationId: GALUWA_VENUE_INFO.outdoor.id,
+      locationName: GALUWA_VENUE_INFO.outdoor.name,
+      address: GALUWA_VENUE_INFO.outdoor.address,
+      suburb: GALUWA_VENUE_INFO.outdoor.suburb,
+      courts,
+    });
+
+    console.log(`Mindbody (Galuwa Outdoor): staff list contained ${serviceCount} courts`);
+  } catch (error) {
+    console.error('Error scraping Mindbody Galuwa outdoor venue:', error);
   }
 
   return {

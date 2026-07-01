@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" role="img" aria-labelledby="title desc">
+  <title id="title">Camellia Indoor Sports Centre</title>
+  <desc id="desc">Round Camellia Indoor Sports Centre logo with SSM Group text.</desc>
+  <rect width="600" height="600" fill="#000000"/>
+  <circle cx="300" cy="300" r="280" fill="#000000" stroke="#c9cf35" stroke-width="10"/>
+  <circle cx="300" cy="300" r="190" fill="#000000" stroke="#c9cf35" stroke-width="7"/>
+  <path id="topArc" d="M 80 300 A 220 220 0 0 1 520 300" fill="none"/>
+  <path id="bottomArc" d="M 520 300 A 220 220 0 0 1 80 300" fill="none"/>
+  <text fill="#c9cf35" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="500" letter-spacing="2">
+    <textPath href="#topArc" startOffset="50%" text-anchor="middle">CAMELLIA INDOOR</textPath>
+  </text>
+  <text fill="#c9cf35" font-family="Arial, Helvetica, sans-serif" font-size="56" font-weight="500" letter-spacing="2">
+    <textPath href="#bottomArc" startOffset="50%" text-anchor="middle">SPORTS CENTRE</textPath>
+  </text>
+  <text x="300" y="305" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="120" font-weight="800" fill="#b5be2c">SSM</text>
+  <text x="300" y="370" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="78" font-weight="300" fill="#ffffff">GROUP</text>
+</svg>

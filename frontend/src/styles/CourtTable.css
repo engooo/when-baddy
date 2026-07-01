@@ -42,132 +42,23 @@
   border-color: #d5e8e6;
 }
 
-.weekly-table-container.pickleball-theme .time-header,
-.weekly-table-container.pickleball-theme .location-column,
-.weekly-table-container.pickleball-theme .legend-label {
-  color: #5d7f7d;
-}
-
-.weekly-table-container.pickleball-theme .view-toggle-btn,
-.weekly-table-container.pickleball-theme .quick-filter-chip,
-.weekly-table-container.pickleball-theme .suburb-pill-btn,
-.weekly-table-container.pickleball-theme .stylized-time-field select,
-.weekly-table-container.pickleball-theme .open-filters-btn,
-.weekly-table-container.pickleball-theme .pick-date-btn {
-  border-color: #b6d8d5;
-  color: #2c6461;
-}
-
-.weekly-table-container.pickleball-theme .view-toggle-btn:hover:not(.active),
-.weekly-table-container.pickleball-theme .quick-filter-chip:hover,
-.weekly-table-container.pickleball-theme .suburb-pill-btn:hover,
-.weekly-table-container.pickleball-theme .open-filters-btn:hover,
-.weekly-table-container.pickleball-theme .pick-date-btn:hover {
-  background: #edf8f7;
-  border-color: var(--brand-green-soft-border);
+.court-section-header-row .court-section-header-cell {
+  padding: 6px 12px 4px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
   color: var(--brand-green-ink);
+  background: var(--brand-green-tint);
+  border-bottom: 1px solid var(--brand-green-soft-border);
+  border-top: 2px solid var(--brand-green-soft-border);
 }
 
-.weekly-table-container.pickleball-theme .view-toggle-btn.active,
-.weekly-table-container.pickleball-theme .quick-filter-chip.active,
-.weekly-table-container.pickleball-theme .suburb-pill-btn.active,
-.weekly-table-container.pickleball-theme .filters-apply-btn {
-  background: var(--brand-green-gradient);
-  color: #ffffff;
-  border-color: transparent;
-}
-
-.weekly-table-container.pickleball-theme .location-expand-btn {
-  color: #2a5f5c;
-}
-
-.weekly-table-container {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-  background: #f4f8f6;
-  min-height: 100vh;
-  padding: 0 1rem 1rem;
-}
-
-.filter-section {
-  background: #ffffff;
-  border-top: 1px solid #d6ddd7;
-  border-bottom: 1px solid #d6ddd7;
-  border-left: none;
-  border-right: none;
-  border-radius: 0;
-  padding: 0;
-  width: 100vw;
-  margin-left: calc(50% - 50vw);
-  margin-right: calc(50% - 50vw);
-}
-
-.filter-section-inner {
-  width: 100%;
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 0.85rem 3rem;
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.filter-divider {
-  display: none;
-}
-
-/* Day Selector */
-.day-selector-wrapper {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
-  overflow: visible;
-  position: relative;
-}
-
-.day-selector {
-  display: flex;
-  justify-content: flex-start;
-  gap: 0.7rem;
-  overflow-x: auto;
-  padding: 0.5rem 0 0.4rem;
-  scroll-snap-type: x mandatory;
-  scroll-padding-inline: 0;
-  max-width: calc(100vw - 120px);
-  min-width: 0;
-  margin-top: 0.5rem;
-}
-
-.day-selector::before,
-.day-selector::after {
-  content: none;
-}
-
-.day-selector-right-nav {
-  display: inline-flex;
-  align-items: center;
-  gap: 0;
-  flex-shrink: 0;
-  margin-left: 0.9rem;
-}
-
-.date-picker-row {
-  width: 100%;
-  max-width: 100%;
-  margin: 0 auto 0.35rem;
-  position: relative;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0.55rem;
+.court-section-header-row:first-child .court-section-header-cell {
+  border-top: none;
 }
 
 .open-filters-btn {
-  width: 100%;
-  height: 42px;
-  border-radius: 12px;
   border: 1px solid #cfd6d1;
   background: #ffffff;
   color: #42524a;
@@ -1645,6 +1536,31 @@
   margin-left: -0.08rem;
 }
 
+.availability-cell.hour-bucket-merged .availability-card {
+  border: 1px solid rgba(94, 112, 102, 0.55);
+}
+
+.availability-cell.hour-bucket-merged.none-available .availability-card {
+  border-color: #b8c8bf;
+}
+
+.availability-cell.hour-bucket-merged.one-available .availability-card {
+  border-color: #b8614f;
+}
+
+.availability-cell.hour-bucket-merged.low-available .availability-card {
+  border-color: #c3a15b;
+}
+
+.availability-cell.hour-bucket-merged.medium-available .availability-card {
+  border-color: #77b49a;
+}
+
+.availability-cell.hour-bucket-merged.high-available .availability-card,
+.availability-cell.hour-bucket-merged.very-high-available .availability-card {
+  border-color: #4f9f7d;
+}
+
 .availability-cell.none-available .availability-card {
   background: var(--availability-none);
   color: #8ca096;
@@ -2293,7 +2209,7 @@
 
 .booking-modal-info-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 0.6rem;
   margin-bottom: 1.25rem;
 }

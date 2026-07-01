@@ -7,178 +7,137 @@ const NBC_LOCATIONS = [
   { id: 5, name: 'Castle Hill', address: '3/16 Anella Ave, Castle Hill NSW 2154', suburb: 'Castle Hill' },
   { id: 6, name: 'Alexandria', address: '8/190 Bourke Road, Alexandria NSW 2015', suburb: 'Alexandria' },
   { id: 7, name: 'MQ Park', address: '396 Lane Cove Rd, Macquarie Park NSW 2113', suburb: 'Macquarie Park' },
+  { id: 8, name: 'Olympic Park', address: 'Olympic Blvd, Sydney Olympic Park NSW 2127', suburb: 'Sydney Olympic Park' },
+  { id: 9, name: 'Olympic Park Pickleball', address: 'Olympic Blvd, Sydney Olympic Park NSW 2127', suburb: 'Sydney Olympic Park' },
 ];
 
 const BASE_URL = 'https://nbc.yepbooking.com.au';
 
+type SlotStatus = 'available' | 'booked' | 'past';
+
 async function fetchLocationHtml(locationId: number, date: { day: number; month: number; year: number }): Promise<string> {
   const params = new URLSearchParams({
-    day:          date.day.toString(),
-    month:        date.month.toString(),
-    year:         date.year.toString(),
-    id_sport:     locationId.toString(),
-    event:        'pageLoad',
-    tab_type:     'normal',
+    id_sport: locationId.toString(),
+    day: date.day.toString(),
+    month: date.month.toString(),
+    year: date.year.toString(),
+    event: 'init',
     timetableWidth: '778',
   });
 
-  const res = await fetch(`${BASE_URL}/ajax/ajax.schema.php?${params}`, {
+  const response = await fetch(`${BASE_URL}/ajax/ajax.schema.php`, {
+    method: 'POST',
     headers: {
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
-      'Referer':    BASE_URL,
-      'Accept':     'text/html,application/xhtml+xml',
+      Referer: BASE_URL,
+      Accept: 'text/html,application/xhtml+xml',
       'X-Requested-With': 'XMLHttpRequest',
+      'Content-Type': 'application/x-www-form-urlencoded',
     },
+    body: params.toString(),
   });
 
-  if (!res.ok) throw new Error(`HTTP ${res.status} for location ${locationId}`);
-  return res.text();
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status} for location ${locationId}`);
+  }
+
+  return response.text();
 }
 
-function parseHtml(html: string, locationId: number) {
+function getCellStatus(cellClass: string, title: string, cellHtml: string): SlotStatus {
+  const normalizedClass = cellClass.toLowerCase();
+  const normalizedTitle = title.toLowerCase();
+
+  if (normalizedClass.includes('old') || normalizedTitle.includes("can't book in the past")) {
+    return 'past';
+  }
+
+  if (normalizedClass.includes('empty') || cellHtml.includes('<a')) {
+    return 'available';
+  }
+
+  if (normalizedClass.includes('booked') || normalizedClass.includes('closed') || normalizedTitle.includes('closed')) {
+    return 'booked';
+  }
+
+  return 'booked';
+}
+
+function parseTableData(html: string): Array<{ courtName: string; availability: Array<{ timeSlot: string; status: SlotStatus; price: number }> }> {
   const $ = cheerio.load(html);
-  const courtData: { courtId: string; courtName: string; availability: any[] }[] = [];
+  const table = $('table.schema.schemaIndividual').first();
 
-  // YepBooking has TWO tables:
-  // 1. table.schemaLaneTable - contains court/lane names in row labels
-  // 2. table.schemaIndividual - contains time headers and availability cells
+  if (table.length === 0) {
+    console.warn('No schemaIndividual table found in NBC response');
+    return [];
+  }
 
-  // --- Extract court names from first table (lane labels) ---
-  const courtNames: string[] = [];
-  const laneRows = $('table.schemaLaneTable tbody tr');
-  
-  console.log(`[DEBUG] Found ${laneRows.length} rows in schemaLaneTable`);
-  
-  // Debug: log first few rows to see structure
-  laneRows.slice(0, 3).each((idx, elem) => {
-    console.log(`  Row ${idx}: class="${$(elem).attr('class')}", text starts with: "${$(elem).text().slice(0, 30)}"`);
-  });
-  
-  laneRows.each((index, element) => {
-    const $row = $(element);
-    // Skip special rows (hidden, times, prices)
-    const rowClass = ($row.attr('class') || '').toLowerCase();
-    if (rowClass.includes('hidden') || rowClass.includes('times') || rowClass.includes('prices')) {
-      return;
-    }
-    
-    const courtName = $row.find('td.lineNumber span').text().trim();
-    if (courtName) {
-      courtNames.push(courtName);
-      courtData.push({ 
-        courtId: `${locationId}-${courtNames.length - 1}`, 
-        courtName, 
-        availability: [] 
-      });
-    }
-  });
-  
-  console.log(`[DEBUG] Extracted ${courtNames.length} court names:`, courtNames.slice(0, 10));
-
-  // --- Extract time slots from second table header ---
   const timeSlots: string[] = [];
-  const timeRow = $('table.schemaIndividual thead tr.times');
-  timeRow.find('td').each((index, element) => {
-    const time = $(element).text().trim();
-    if (time) {
-      timeSlots.push(time);
-    }
-  });
-  
-  console.log(`[DEBUG] Extracted ${timeSlots.length} time slots:`, timeSlots);
-
-  // --- Extract availability from second table body ---
-  const bodyRows = $('table.schemaIndividual tbody tr');
-  const prices: { [key: number]: number } = {};
-  
-  // Extract prices from the prices row first
-  const pricesRow = $('table.schemaIndividual tbody tr.prices');
-  pricesRow.find('td').each((index, element) => {
-    const priceText = $(element).text().trim();
-    const priceMatch = priceText.match(/\$(\d+)/);
-    if (priceMatch) {
-      prices[index] = parseInt(priceMatch[1]);
+  table.find('thead tr.times td').each((_, cell) => {
+    const text = $(cell).text().trim();
+    const span = Number($(cell).attr('colspan') ?? '1') || 1;
+    for (let index = 0; index < span; index += 1) {
+      if (text) {
+        timeSlots.push(text);
+      }
     }
   });
 
-  let courtIndex = 0;
-  bodyRows.each((_rowIndex, rowElement) => {
-    const $row = $(rowElement);
-    
-    // Skip special rows
-    const rowClass = ($row.attr('class') || '').toLowerCase();
-    if (rowClass.includes('hidden') || rowClass.includes('times') || rowClass.includes('prices')) {
-      return;
+  const prices: number[] = [];
+  table.find('tr.prices td').each((_, cell) => {
+    const text = $(cell).text().trim();
+    const span = Number($(cell).attr('colspan') ?? '1') || 1;
+    const match = text.match(/\$(\d+(?:\.\d+)?)/);
+    const price = match ? Number(match[1]) : 0;
+
+    for (let index = 0; index < span; index += 1) {
+      prices.push(price);
     }
+  });
 
-    if (courtIndex >= courtNames.length) {
-      console.log(`[DEBUG] Skipping body row ${_rowIndex}: courtIndex ${courtIndex} >= courtNames.length ${courtNames.length}`);
-      return;
-    }
+  const courts: Array<{ courtName: string; availability: Array<{ timeSlot: string; status: SlotStatus; price: number }> }> = [];
 
-    const cells = $row.find('td');
-    let availableCount = 0;
-    let totalCellsChecked = 0;
+  table.find('tr[class*="trSchemaLane_"]').each((rowIndex, row) => {
+    const courtName = $(row).find('th.lineNumber span').first().text().trim() || `Court ${rowIndex + 1}`;
+    const availability: Array<{ timeSlot: string; status: SlotStatus; price: number }> = [];
+    let slotIndex = 0;
 
-    cells.each((cellIndex, cellElement) => {
-      const $cell = $(cellElement);
-      const cellClass = ($cell.attr('class') || '').toLowerCase();
-      
-      // Skip if cell index exceeds time slots
-      if (cellIndex >= timeSlots.length) return;
+    $(row).find('td').each((_, cell) => {
+      const $cell = $(cell);
+      const span = Number($cell.attr('colspan') ?? '1') || 1;
+      const status = getCellStatus($cell.attr('class') || '', $cell.attr('title') || '', $.html(cell) || '');
 
-      const timeSlot = timeSlots[cellIndex];
-      const cellTitle = $cell.attr('title') || '';
-
-      // Determine availability status
-      let status: 'available' | 'booked' | 'past' = 'booked';
-      if (cellClass.includes('empty') || $cell.find('a').length > 0) {
-        status = 'available';
-      } else if (cellClass.includes('old')) {
-        status = 'past';
-      } else if (cellClass.includes('booked')) {
-        status = 'booked';
-      }
-
-      // Skip past times
-      if (status === 'past') return;
-
-      // Extract price from title attribute or prices row
-      let price = prices[cellIndex] || 0;
-      const priceMatch = cellTitle.match(/\$(\d+)/);
-      if (priceMatch) {
-        price = parseInt(priceMatch[1]);
-      }
-
-        // Only include available slots
-      if (status === 'available') {
-        availableCount++;
-          courtData[courtIndex].availability.push({ timeSlot, status, price });
+      for (let index = 0; index < span && slotIndex < timeSlots.length; index += 1) {
+        availability.push({
+          timeSlot: timeSlots[slotIndex],
+          status,
+          price: prices[slotIndex] ?? 0,
+        });
+        slotIndex += 1;
       }
     });
-    
-      console.log(`[DEBUG] Court ${courtIndex} (${courtNames[courtIndex] || 'UNKNOWN'}): found ${availableCount} available slots`);
-    courtIndex++;
+
+    if (availability.length > 0) {
+      courts.push({ courtName, availability });
+    }
   });
 
-    console.log(`[DEBUG] Final result: ${courtData.length} courts, ${courtData.reduce((sum, c) => sum + c.availability.length, 0)} available slots`);
-  return courtData;
+  return courts;
 }
 
 async function scrapeNBCLocation(locationId: number, locationName: string, address: string, suburb: string, date: { day: number; month: number; year: number }) {
   try {
     const html = await fetchLocationHtml(locationId, date);
-
-    // --- Debug: log raw HTML first time you run so you can verify structure ---
-    if (process.env.DEBUG_SCRAPER) {
-      console.log(`\n--- Raw HTML for ${locationName} (first 2000 chars) ---`);
-      console.log(html.slice(0, 2000));
-    }
-
-    const courts = parseHtml(html, locationId);
+    const courts = parseTableData(html).map((court, index) => ({
+      courtId: `${locationId}-${index}`,
+      ...court,
+    }));
 
     if (courts.length === 0) {
-      console.warn(`⚠️  No courts parsed for ${locationName} — HTML structure may have changed`);
+      console.warn(`NBC ${locationName}: no courts parsed`);
+    } else {
+      const availableSlots = courts.reduce((sum, court) => sum + court.availability.filter((slot) => slot.status === 'available').length, 0);
+      console.log(`NBC ${locationName}: ${courts.length} courts, ${availableSlots} available slots`);
     }
 
     return { locationId: `${locationId}`, locationName, address, suburb, courts };
@@ -190,20 +149,23 @@ async function scrapeNBCLocation(locationId: number, locationName: string, addre
 
 export async function scrapeNBCBadminton(date?: { day: number; month: number; year: number }) {
   const d = date ?? {
-    day:   new Date().getDate(),
+    day: new Date().getDate(),
     month: new Date().getMonth() + 1,
-    year:  new Date().getFullYear(),
+    year: new Date().getFullYear(),
   };
 
-  // Fetch all 6 locations in parallel — safe since we use fetch() not a shared browser page
-  const locations = await Promise.all(
-    NBC_LOCATIONS.map((loc) => scrapeNBCLocation(loc.id, loc.name, loc.address, loc.suburb, d))
-  );
+  const locations = [];
+  for (const loc of NBC_LOCATIONS) {
+    const result = await scrapeNBCLocation(loc.id, loc.name, loc.address, loc.suburb, d);
+    if (result) {
+      locations.push(result);
+    }
+  }
 
   return {
     club: 'nbc',
     date: `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`,
-    locations: locations.filter((l) => l !== null),
+    locations,
     scrapedAt: new Date().toISOString(),
   };
 }

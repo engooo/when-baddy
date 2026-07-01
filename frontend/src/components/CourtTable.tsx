@@ -18,6 +18,7 @@ import '../styles/CourtTable.css';
 
 interface AggregatedCourt {
   club: 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint' | 'mindbody';
+  sport?: 'badminton' | 'pickleball';
   location: string;
   locationId: string;
   address: string;
@@ -57,6 +58,34 @@ const SUBURB_ORDER = [
   'Seven Hills',
   'Lane Cove',
   'Alexandria',
+  'Sydney Olympic Park',
+];
+
+const PICKLEBALL_VENUE_FALLBACKS = [
+  {
+    locationKey: 'Mindbody Ryde Multisport & Racquet Centre',
+    address: '16-18 Epping Rd, North Ryde NSW 2113',
+  },
+  {
+    locationKey: 'Mindbody Camellia Indoor Sports Centre',
+    address: '9 Grand Avenue, Camellia NSW 2142',
+  },
+  {
+    locationKey: 'Mindbody Galuwa Recreation Centre - Indoor',
+    address: '180 River Rd, Lane Cove NSW 2066',
+  },
+  {
+    locationKey: 'Mindbody Galuwa Recreation Centre - Outdoor',
+    address: '180 River Rd, Lane Cove NSW 2066',
+  },
+  {
+    locationKey: 'Picklepoint Pickle Point',
+    address: '101 Raleigh Rd, Milperra NSW 2214',
+  },
+  {
+    locationKey: 'NBC Olympic Park Pickleball',
+    address: 'Olympic Blvd, Sydney Olympic Park NSW 2127',
+  },
 ];
 
 const CAMELLIA_MINDBODY_LOCATION_KEY = 'Mindbody Camellia Indoor Sports Centre';
@@ -112,6 +141,21 @@ function parseTimeSlotStartHour(timeSlot: string): number | null {
   }
 
   return null;
+}
+
+function getTimeSlotRangeForDisplay(timeSlot: string): { start: number; end: number } | null {
+  const explicitRange = parseTimeSlotRangeMinutes(timeSlot);
+  if (explicitRange) {
+    return explicitRange;
+  }
+
+  const startHour = parseTimeSlotStartHour(timeSlot);
+  if (startHour === null) {
+    return null;
+  }
+
+  const start = Math.floor(startHour) * 60 + (startHour % 1 >= 0.5 ? 30 : 0);
+  return { start, end: start + 60 };
 }
 
 function formatDateDMY(dateStr: string): string {
@@ -234,17 +278,28 @@ function parseLocationKey(locationKey: string): {
     const mindbodyLocationName = locationKey.replace(/^Mindbody\s+/, '');
     if (mindbodyLocationName === 'Camellia Indoor Sports Centre') {
       return {
-        venueKey: 'mindbody',
+        venueKey: 'mindbody-camellia',
         venueName: 'Camellia Indoor Sports Centre',
         locationName: mindbodyLocationName,
-        logoSrc: null,
+        logoSrc: '/assets/venue-logos/camellia_logo.svg',
         badgeText: 'CI',
         badgeClass: 'venue-logo-mindbody',
       };
     }
 
+    if (mindbodyLocationName.startsWith('Galuwa Recreation Centre')) {
+      return {
+        venueKey: 'mindbody-galuwa',
+        venueName: 'Galuwa Recreation Centre',
+        locationName: mindbodyLocationName,
+        logoSrc: '/assets/venue-logos/galuwa_logo.svg',
+        badgeText: 'GR',
+        badgeClass: 'venue-logo-mindbody',
+      };
+    }
+
     return {
-      venueKey: 'mindbody',
+      venueKey: 'mindbody-ryde',
       venueName: 'Ryde Multisport & Racquet Centre',
       locationName: mindbodyLocationName,
       logoSrc: '/assets/venue-logos/ryde_logo.png',
@@ -261,6 +316,58 @@ function parseLocationKey(locationKey: string): {
     badgeText: 'B',
     badgeClass: 'venue-logo-default',
   };
+}
+
+function getPickleballVenueType(locationKey: string): 'indoor' | 'outdoor' | null {
+  if (
+    locationKey === 'Mindbody Camellia Indoor Sports Centre' ||
+    locationKey === 'Mindbody Galuwa Recreation Centre - Indoor'
+  ) {
+    return 'indoor';
+  }
+
+  if (
+    locationKey === 'Mindbody Ryde Multisport & Racquet Centre' ||
+    locationKey === 'Mindbody Galuwa Recreation Centre - Outdoor' ||
+    locationKey.startsWith('Picklepoint ') ||
+    locationKey === 'NBC Olympic Park Pickleball'
+  ) {
+    return 'outdoor';
+  }
+
+  return null;
+}
+
+function getEquipmentHireInfo(locationKey: string): { available: boolean; price: number } | null {
+  if (
+    locationKey === 'Mindbody Camellia Indoor Sports Centre' ||
+    locationKey === 'Mindbody Ryde Multisport & Racquet Centre' ||
+    locationKey.startsWith('Picklepoint ')
+  ) {
+    return { available: true, price: 5 };
+  }
+
+  return null;
+}
+
+function isHourBucketedPickleballLocation(locationKey: string): boolean {
+  return locationKey === 'NBC Olympic Park Pickleball';
+}
+
+function inferCourtSport(court: AggregatedCourt): 'badminton' | 'pickleball' {
+  if (court.sport) {
+    return court.sport;
+  }
+
+  if (court.club === 'picklepoint' || court.club === 'mindbody') {
+    return 'pickleball';
+  }
+
+  if (court.club === 'nbc' && /pickleball/i.test(court.location)) {
+    return 'pickleball';
+  }
+
+  return 'badminton';
 }
 
 export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
@@ -310,6 +417,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
   const [pendingCount, setPendingCount] = useState<number>(0);
   const [pendingPrice, setPendingPrice] = useState<number | null>(null);
   const [pendingSource, setPendingSource] = useState<'table' | 'matrix'>('table');
+  const [pendingHourBlockHours, setPendingHourBlockHours] = useState<number>(0.5);
   const [timeTick, setTimeTick] = useState<number>(Date.now());
   const [selectedSuburbs, setSelectedSuburbs] = useState<string[]>(initialFilters.selectedSuburbs);
   const [startHour, setStartHour] = useState<number>(initialFilters.fromHour);
@@ -339,9 +447,9 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
 
   const sportScopedCourts = useMemo(() => {
     return courts.filter((court) => {
-      const isPickleballClub = court.club === 'picklepoint' || court.club === 'mindbody';
-      if (sportMode === 'grid') return !isPickleballClub;
-      return isPickleballClub;
+      const sport = inferCourtSport(court);
+      if (sportMode === 'grid') return sport === 'badminton';
+      return sport === 'pickleball';
     });
   }, [courts, sportMode]);
 
@@ -415,6 +523,8 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         '5': 5,
         '6': 6,
         '7': 7,
+        '8': 8,
+        '9': 9,
       };
       const id = NBC_LOCATION_IDS[locationId];
       if (!id) return null;
@@ -449,6 +559,13 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         return 'https://go.mindbodyonline.com/book/widgets/appointments/view/b2175829c93/services';
       }
 
+      if (
+        court.locationId === 'mindbody-galuwa-indoor' ||
+        court.locationId === 'mindbody-galuwa-outdoor'
+      ) {
+        return 'https://go.mindbodyonline.com/book/widgets/appointments/view/974479625ad/services';
+      }
+
       return 'https://go.mindbodyonline.com/book/widgets/appointments/view/7b9803fef1/services';
     }
 
@@ -461,7 +578,8 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
     hour?: number,
     count?: number,
     price?: number | null,
-    source: 'table' | 'matrix' = 'table'
+    source: 'table' | 'matrix' = 'table',
+    hourBlockHours: number = 0.5
   ) => {
     if (!bookingUrl) return;
     setPendingBookingUrl(bookingUrl);
@@ -470,6 +588,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
     setPendingCount(count ?? 0);
     setPendingPrice(price ?? null);
     setPendingSource(source);
+    setPendingHourBlockHours(hourBlockHours);
   };
 
   const closeBookingModal = () => {
@@ -479,6 +598,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
     setPendingCount(0);
     setPendingPrice(null);
     setPendingSource('table');
+    setPendingHourBlockHours(0.5);
   };
 
   const confirmBooking = () => {
@@ -705,9 +825,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
       }
 
       if (sportMode === 'map') {
-        // For pickleball, slots are large windows (e.g. "6:00am–6:00pm").
-        // Include the court if its window overlaps the visible [startHour, endHour] range.
-        const range = parseTimeSlotRangeMinutes(court.timeSlot);
+        const range = getTimeSlotRangeForDisplay(court.timeSlot);
         if (!range) return false;
         const visibleStart = startHour * 60;
         const visibleEnd = endHour * 60 + 30; // +30 to include the last half-hour bucket
@@ -793,7 +911,9 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
 
   // Map locationKey -> address for display in the location column
   const locationAddresses = useMemo(() => {
-    const map: { [key: string]: string } = {};
+    const map: { [key: string]: string } = Object.fromEntries(
+      PICKLEBALL_VENUE_FALLBACKS.map((venue) => [venue.locationKey, venue.address])
+    );
     filteredCourts.forEach((court) => {
       const clubLabel =
         court.club === 'alpha' ? 'Alpha'
@@ -867,7 +987,11 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
           let minPrice: number | null = null;
 
           for (const entry of courtEntries) {
-            const range = parseTimeSlotRangeMinutes(entry.timeSlot);
+            if (entry.status !== 'available') continue;
+
+            const range = sportMode === 'map'
+              ? getTimeSlotRangeForDisplay(entry.timeSlot)
+              : parseTimeSlotRangeMinutes(entry.timeSlot);
             const overlaps = range
               ? rangesOverlap(range, bucket)
               : parseTimeSlotStartHour(entry.timeSlot) === hour;
@@ -911,11 +1035,13 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         const priceByCourtId = new Map<string, number>();
 
         for (const timeSlot in timeSlots) {
-          const sourceRange = parseTimeSlotRangeMinutes(timeSlot);
+          const sourceRange = getTimeSlotRangeForDisplay(timeSlot);
           if (!sourceRange || !rangesOverlap(sourceRange, bucket)) continue;
 
           const overlappingCourts = timeSlots[timeSlot];
           for (const court of overlappingCourts) {
+            if (court.status !== 'available') continue;
+
             uniqueCourtIds.add(court.courtId);
 
             const slotRangeMinutes = sourceRange.end - sourceRange.start;
@@ -948,12 +1074,30 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
 
   // Get all unique locations
   const allLocations = useMemo(() => {
-    const locations = Object.keys(courtsByLocationAndTime).sort();
-    if (!hideEmptyLocations) {
-      return locations;
+    const locations = new Set(Object.keys(courtsByLocationAndTime));
+    if (sportMode === 'map') {
+      PICKLEBALL_VENUE_FALLBACKS.forEach((venue) => locations.add(venue.locationKey));
+      return Array.from(locations).sort();
     }
-    return locations.filter((location) => hasAnyAvailabilityInVisibleRange(location));
-  }, [courtsByLocationAndTime, hideEmptyLocations, visibleHours, pickleballBucketStats]);
+    const sortedLocations = Array.from(locations).sort();
+    if (!hideEmptyLocations) {
+      return sortedLocations;
+    }
+    return sortedLocations.filter((location) => hasAnyAvailabilityInVisibleRange(location));
+  }, [courtsByLocationAndTime, hideEmptyLocations, visibleHours, pickleballBucketStats, sportMode]);
+
+  const isIndoorPickleballLocation = (locationKey: string): boolean =>
+    getPickleballVenueType(locationKey) === 'indoor';
+
+  const outdoorPickleballLocations = useMemo(
+    () => allLocations.filter((loc) => !isIndoorPickleballLocation(loc)),
+    [allLocations]
+  );
+
+  const indoorPickleballLocations = useMemo(
+    () => allLocations.filter((loc) => isIndoorPickleballLocation(loc)),
+    [allLocations]
+  );
 
   useEffect(() => {
     setExpandedLocations((prev) => prev.filter((location) => allLocations.includes(location)));
@@ -986,7 +1130,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         if (startPeriod === 'pm' && startHour !== 12) startHour += 12;
         if (startPeriod === 'am' && startHour === 12) startHour = 0;
         if (startHour === targetWholeHour && startMinute === targetMinute) {
-          return timeSlots[timeSlot].length;
+          return timeSlots[timeSlot].filter((entry) => entry.status === 'available').length;
         }
       } else {
         match = timeSlot.match(/(\d+):(\d+)(am|pm)/);
@@ -997,7 +1141,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
           if (timePeriod === 'pm' && timeHour !== 12) timeHour += 12;
           if (timePeriod === 'am' && timeHour === 12) timeHour = 0;
           if (timeHour === targetWholeHour && timeMinute === targetMinute) {
-            return timeSlots[timeSlot].length;
+            return timeSlots[timeSlot].filter((entry) => entry.status === 'available').length;
           }
         }
       }
@@ -1022,8 +1166,11 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         const startPeriod = match[3];
         if (startPeriod === 'pm' && startHour !== 12) startHour += 12;
         if (startPeriod === 'am' && startHour === 12) startHour = 0;
-        if (startHour === targetWholeHour && startMinute === targetMinute && timeSlots[timeSlot].length > 0) {
-          return timeSlots[timeSlot][0].price;
+        if (startHour === targetWholeHour && startMinute === targetMinute) {
+          const availableEntries = timeSlots[timeSlot].filter((entry) => entry.status === 'available');
+          if (availableEntries.length > 0) {
+            return availableEntries[0].price;
+          }
         }
       } else {
         match = timeSlot.match(/(\d+):(\d+)(am|pm)/);
@@ -1033,8 +1180,11 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
           const timePeriod = match[3];
           if (timePeriod === 'pm' && timeHour !== 12) timeHour += 12;
           if (timePeriod === 'am' && timeHour === 12) timeHour = 0;
-          if (timeHour === targetWholeHour && timeMinute === targetMinute && timeSlots[timeSlot].length > 0) {
-            return timeSlots[timeSlot][0].price;
+          if (timeHour === targetWholeHour && timeMinute === targetMinute) {
+            const availableEntries = timeSlots[timeSlot].filter((entry) => entry.status === 'available');
+            if (availableEntries.length > 0) {
+              return availableEntries[0].price;
+            }
           }
         }
       }
@@ -1042,13 +1192,17 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
     return null;
   };
 
-  const getAvailabilityClass = (location: string, hour: number): string => {
-    const count = getCountForTimeSlot(location, hour);
+  const getAvailabilityClassFromCount = (count: number): string => {
     if (count === 0) return 'none-available';
     if (count === 1) return 'one-available';
     if (count <= 4) return 'low-available';
     if (count <= 9) return 'medium-available';
     return 'high-available';
+  };
+
+  const getAvailabilityClass = (location: string, hour: number): string => {
+    const count = getCountForTimeSlot(location, hour);
+    return getAvailabilityClassFromCount(count);
   };
 
   const formatHourDisplay = (hour: number): string => {
@@ -1087,6 +1241,250 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
   const isMorningActive = startHour === 10 && endHour === 12;
   const isAfternoonActive = startHour === 12 && endHour === 17;
   const isNightActive = startHour === 18 && endHour === 22;
+
+  const renderLocationRow = (location: string) => {
+    const venue = parseLocationKey(location);
+    const showVenueLogoImage = Boolean(venue.logoSrc) && !failedVenueLogos[venue.venueKey];
+    const countsByHour = visibleHours.map((hour) => getCountForTimeSlot(location, hour));
+    const isExpanded = expandedLocations.includes(location);
+    const detailId = `venue-details-${location.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+    const venueMatrix = courtMatrixByLocation[location];
+    return (
+      <React.Fragment key={location}>
+        <tr>
+          <td className="location-cell">
+            <span className="location-content">
+              <span className={`venue-logo ${venue.badgeClass}`} aria-hidden="true">
+                {showVenueLogoImage ? (
+                  <img
+                    className="venue-logo-image"
+                    src={venue.logoSrc ?? undefined}
+                    alt=""
+                    onError={() => {
+                      setFailedVenueLogos((prev) => {
+                        if (prev[venue.venueKey]) return prev;
+                        return { ...prev, [venue.venueKey]: true };
+                      });
+                    }}
+                  />
+                ) : (
+                  venue.badgeText
+                )}
+              </span>
+              <span className="location-details">
+                <span className="location-name">
+                  <span className="location-name-text">{venue.locationName}</span>
+                </span>
+                {locationAddresses[location] && (
+                  <span
+                    className="location-address"
+                    onClick={() => setMapsModalInfo({ location, address: locationAddresses[location] })}
+                  >
+                    <MapPin size={12} className="location-icon" aria-hidden="true" />
+                    {locationAddresses[location]}
+                  </span>
+                )}
+              </span>
+              <button
+                type="button"
+                className={`location-expand-btn ${isExpanded ? 'is-expanded' : ''}`}
+                aria-expanded={isExpanded}
+                aria-controls={detailId}
+                aria-label={isExpanded ? `Hide courts for ${venue.locationName}` : `Show courts for ${venue.locationName}`}
+                onClick={() => toggleLocationExpand(location)}
+              >
+                <ChevronRight size={18} />
+                <span className="sr-only">{isExpanded ? 'Hide courts' : 'Show courts'}</span>
+              </button>
+            </span>
+          </td>
+          {(() => {
+            const hourCells: React.ReactNode[] = [];
+
+            for (let index = 0; index < visibleHours.length; index += 1) {
+              const hour = visibleHours[index];
+              const count = countsByHour[index];
+              const price = getPriceForTimeSlot(location, hour);
+              const isPickleballCell = sportMode === 'map';
+              const isHourBucketedPickleball = isPickleballCell && isHourBucketedPickleballLocation(location);
+
+              if (isHourBucketedPickleball && hour % 1 === 0 && index < visibleHours.length - 1) {
+                const nextHour = visibleHours[index + 1];
+                if (Math.abs(nextHour - (hour + 0.5)) < 0.001) {
+                  const nextCount = countsByHour[index + 1];
+                  const mergedCount = Math.max(count, nextCount);
+                  const hasPrevPair =
+                    index >= 2 &&
+                    Math.abs(visibleHours[index - 1] - (hour - 0.5)) < 0.001 &&
+                    Math.abs(visibleHours[index - 2] - (hour - 1)) < 0.001;
+                  const hasNextPair =
+                    index + 3 < visibleHours.length &&
+                    Math.abs(visibleHours[index + 2] - (hour + 1)) < 0.001 &&
+                    Math.abs(visibleHours[index + 3] - (hour + 1.5)) < 0.001;
+                  const prevMergedCount = hasPrevPair
+                    ? Math.max(countsByHour[index - 2], countsByHour[index - 1])
+                    : 0;
+                  const nextMergedCount = hasNextPair
+                    ? Math.max(countsByHour[index + 2], countsByHour[index + 3])
+                    : 0;
+                  let mergedRunClass = '';
+                  if (mergedCount > 0) {
+                    const hasPrev = prevMergedCount > 0;
+                    const hasNext = nextMergedCount > 0;
+                    mergedRunClass = hasPrev && hasNext
+                      ? 'run-middle'
+                      : hasPrev
+                        ? 'run-end'
+                        : hasNext
+                          ? 'run-start'
+                          : 'run-single';
+                  }
+                  const nextPrice = getPriceForTimeSlot(location, nextHour);
+                  const mergedPrice = price ?? nextPrice;
+                  const mergedAvailClass = getAvailabilityClassFromCount(mergedCount);
+                  const bookingUrl = mergedCount > 0 ? getBookingUrl(location) : null;
+                  const showPrice = mergedCount > 0 && mergedPrice !== null && mergedPrice > 0;
+                  const bookingHint =
+                    bookingUrl
+                      ? `Book from ${formatHourDisplay(hour)} to ${formatHourDisplay(hour + 1)}`
+                      : null;
+
+                  hourCells.push(
+                    <td
+                      key={`${hour}-merged`}
+                      colSpan={2}
+                      className={`availability-cell ${mergedAvailClass} ${bookingUrl ? 'bookable' : ''} ${shouldHighlightCurrentHour && (hour === currentTimeColumn || hour + 0.5 === currentTimeColumn) ? 'current-hour' : ''} ${isPickleballCell ? 'connected-mode' : ''} ${mergedRunClass} hour-bucket-merged`}
+                      onClick={() => handleCellClick(bookingUrl, location, hour, mergedCount, mergedPrice, 'table', 1)}
+                    >
+                      <div className="availability-card">
+                        {mergedCount > 0 && <span className="availability-number">{mergedCount}</span>}
+                        {showPrice && (
+                          <span className="availability-price">${mergedPrice}</span>
+                        )}
+                        {bookingHint && (
+                          <span className="availability-hover-hint">{bookingHint}</span>
+                        )}
+                      </div>
+                    </td>,
+                  );
+
+                  index += 1;
+                  continue;
+                }
+              }
+
+              const availClass = getAvailabilityClass(location, hour);
+              const bookingUrl = count > 0 ? getBookingUrl(location) : null;
+              const prevCount = index > 0 ? countsByHour[index - 1] : 0;
+              const nextCount = index < countsByHour.length - 1 ? countsByHour[index + 1] : 0;
+              let runClass = '';
+
+              if (isPickleballCell && !isHourBucketedPickleball && count > 0) {
+                const hasPrev = prevCount > 0;
+                const hasNext = nextCount > 0;
+                runClass = hasPrev && hasNext
+                  ? 'run-middle'
+                  : hasPrev
+                    ? 'run-end'
+                    : hasNext
+                      ? 'run-start'
+                      : 'run-single';
+              }
+
+              const showPrice = count > 0 && price !== null && price > 0;
+              const bookingHint =
+                isPickleballCell && bookingUrl
+                  ? `Book from ${formatHourDisplay(hour)} to ${formatHourDisplay(hour + 0.5)}`
+                  : null;
+
+              hourCells.push(
+                <td
+                  key={hour}
+                  className={`availability-cell ${availClass} ${bookingUrl ? 'bookable' : ''} ${shouldHighlightCurrentHour && hour === currentTimeColumn ? 'current-hour' : ''} ${isPickleballCell ? 'connected-mode' : ''} ${runClass}`}
+                  title={bookingUrl ? 'Click to open booking page for this day' : ''}
+                  onClick={() => handleCellClick(bookingUrl, location, hour, count, price, 'table', 0.5)}
+                >
+                  <div className="availability-card">
+                    {count > 0 && <span className="availability-number">{count}</span>}
+                    {showPrice && (
+                      <span className="availability-price">${price}</span>
+                    )}
+                    {bookingHint && (
+                      <span className="availability-hover-hint">{bookingHint}</span>
+                    )}
+                  </div>
+                </td>,
+              );
+            }
+
+            return hourCells;
+          })()}
+        </tr>
+
+        {isExpanded && (
+          <tr className="venue-details-row">
+            <td colSpan={visibleHours.length + 1} className="venue-details-cell">
+              <div id={detailId} className="venue-details-panel">
+                <div className="venue-details-title-section">
+                  <div className="venue-details-title">Available Courts</div>
+                </div>
+                {venueMatrix && venueMatrix.courts.length > 0 ? (
+                  <div className="venue-court-matrix-wrap">
+                    <table className="venue-court-matrix">
+                      <thead>
+                        <tr>
+                          <th className="venue-court-time-head">Time</th>
+                          {venueMatrix.courts.map((courtName) => (
+                            <th key={`${location}-${courtName}`} className="venue-court-column-head">
+                              <span className="court-name">
+                                {courtName}
+                              </span>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {venueMatrix.timeRows.filter((timeRow) => timeRow.cells.some((c) => c.available)).map((timeRow) => (
+                          <tr key={`${location}-time-${timeRow.hour}`}>
+                            <th className="venue-court-time-cell">{formatHourCompact(timeRow.hour)}</th>
+                            {timeRow.cells.map((cell, courtIndex) => {
+                              const bookingUrl = cell.available ? getBookingUrl(location) : null;
+                              const courtName = venueMatrix.courts[courtIndex];
+                              const cellHint = cell.available ? `${courtName} · ${formatHourDisplay(timeRow.hour)}` : null;
+
+                              return (
+                                <td
+                                  key={`${location}-${timeRow.hour}-${courtName}`}
+                                  className={`venue-court-slot-cell ${cell.available ? 'available' : 'unavailable'} ${bookingUrl ? 'bookable' : ''}`}
+                                  onClick={() => handleCellClick(bookingUrl, location, timeRow.hour, cell.available ? 1 : 0, cell.price, 'matrix')}
+                                >
+                                  {cell.available ? (
+                                    <>
+                                      {cell.price !== null && <span className="venue-court-slot-price">${cell.price}</span>}
+                                      {cell.price === null && <span className="venue-court-slot-open">Open</span>}
+                                      {cellHint && <span className="venue-court-slot-hint">{cellHint}</span>}
+                                    </>
+                                  ) : (
+                                    <span className="venue-court-slot-empty">-</span>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="venue-details-empty">No available courts for current filters.</p>
+                )}
+              </div>
+            </td>
+          </tr>
+        )}
+      </React.Fragment>
+    );
+  };
 
   return (
     <div className={`weekly-table-container ${sportMode === 'map' ? 'pickleball-theme' : ''}`}>
@@ -1432,176 +1830,32 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                     </td>
                   </tr>
                 ) : allLocations.length > 0 ? (
-                  allLocations.map((location) => {
-                    const venue = parseLocationKey(location);
-                    const showVenueLogoImage = Boolean(venue.logoSrc) && !failedVenueLogos[venue.venueKey];
-                    const countsByHour = visibleHours.map((hour) => getCountForTimeSlot(location, hour));
-                    const isExpanded = expandedLocations.includes(location);
-                    const detailId = `venue-details-${location.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
-                    const venueMatrix = courtMatrixByLocation[location];
-                    return (
-                    <React.Fragment key={location}>
-                      <tr>
-                        <td className="location-cell">
-                          <span className="location-content">
-                            <span className={`venue-logo ${venue.badgeClass}`} aria-hidden="true">
-                              {showVenueLogoImage ? (
-                                <img
-                                  className="venue-logo-image"
-                                  src={venue.logoSrc ?? undefined}
-                                  alt=""
-                                  onError={() => {
-                                    setFailedVenueLogos((prev) => {
-                                      if (prev[venue.venueKey]) return prev;
-                                      return { ...prev, [venue.venueKey]: true };
-                                    });
-                                  }}
-                                />
-                              ) : (
-                                venue.badgeText
-                              )}
-                            </span>
-                            <span className="location-details">
-                              <span className="location-name">
-                                <span className="location-name-text">{venue.locationName}</span>
-                              </span>
-                              {locationAddresses[location] && (
-                                <span
-                                  className="location-address"
-                                  onClick={() => setMapsModalInfo({ location, address: locationAddresses[location] })}
-                                >
-                                  <MapPin size={12} className="location-icon" aria-hidden="true" />
-                                  {locationAddresses[location]}
-                                </span>
-                              )}
-                            </span>
-                            <button
-                              type="button"
-                              className={`location-expand-btn ${isExpanded ? 'is-expanded' : ''}`}
-                              aria-expanded={isExpanded}
-                              aria-controls={detailId}
-                              aria-label={isExpanded ? `Hide courts for ${venue.locationName}` : `Show courts for ${venue.locationName}`}
-                              onClick={() => toggleLocationExpand(location)}
-                            >
-                              <ChevronRight size={18} />
-                              <span className="sr-only">{isExpanded ? 'Hide courts' : 'Show courts'}</span>
-                            </button>
-                          </span>
-                        </td>
-                        {visibleHours.map((hour, index) => {
-                          const count = countsByHour[index];
-                          const availClass = getAvailabilityClass(location, hour);
-                          const bookingUrl = count > 0 ? getBookingUrl(location) : null;
-                          const price = getPriceForTimeSlot(location, hour);
-                          const isPickleballCell = sportMode === 'map';
-                          const prevCount = index > 0 ? countsByHour[index - 1] : 0;
-                          const nextCount = index < countsByHour.length - 1 ? countsByHour[index + 1] : 0;
-                          let runClass = '';
-
-                          if (isPickleballCell && count > 0) {
-                            const hasPrev = prevCount > 0;
-                            const hasNext = nextCount > 0;
-                            runClass = hasPrev && hasNext
-                              ? 'run-middle'
-                              : hasPrev
-                                ? 'run-end'
-                                : hasNext
-                                  ? 'run-start'
-                                  : 'run-single';
-                          }
-
-                          const showPrice = count > 0 && price !== null && price > 0;
-
-                          const bookingHint =
-                            isPickleballCell && bookingUrl
-                              ? `Book from ${formatHourDisplay(hour)} to ${formatHourDisplay(hour + 0.5)}`
-                              : null;
-
-                          return (
-                            <td
-                              key={hour}
-                              className={`availability-cell ${availClass} ${bookingUrl ? 'bookable' : ''} ${shouldHighlightCurrentHour && hour === currentTimeColumn ? 'current-hour' : ''} ${isPickleballCell ? 'connected-mode' : ''} ${runClass}`}
-                              title={bookingUrl ? 'Click to open booking page for this day' : ''}
-                              onClick={() => handleCellClick(bookingUrl, location, hour, count, price)}
-                            >
-                              <div className="availability-card">
-                                {count > 0 && <span className="availability-number">{count}</span>}
-                                {showPrice && (
-                                  <span className="availability-price">${price}</span>
-                                )}
-                                {bookingHint && (
-                                  <span className="availability-hover-hint">{bookingHint}</span>
-                                )}
-                              </div>
+                  sportMode === 'map' ? (
+                    <>
+                      {outdoorPickleballLocations.length > 0 && (
+                        <>
+                          <tr className="court-section-header-row">
+                            <td colSpan={visibleHours.length + 1} className="court-section-header-cell">
+                              Outdoor Courts
                             </td>
-                          );
-                        })}
-                      </tr>
-
-                      {isExpanded && (
-                        <tr className="venue-details-row">
-                          <td colSpan={visibleHours.length + 1} className="venue-details-cell">
-                            <div id={detailId} className="venue-details-panel">
-                              <div className="venue-details-title-section">
-                                <div className="venue-details-title">Available Courts</div>
-                              </div>
-                              {venueMatrix && venueMatrix.courts.length > 0 ? (
-                                <div className="venue-court-matrix-wrap">
-                                  <table className="venue-court-matrix">
-                                    <thead>
-                                      <tr>
-                                        <th className="venue-court-time-head">Time</th>
-                                        {venueMatrix.courts.map((courtName) => (
-                                          <th key={`${location}-${courtName}`} className="venue-court-column-head">
-                                            <span className="court-name">
-                                              {courtName}
-                                            </span>
-                                          </th>
-                                        ))}
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {venueMatrix.timeRows.filter((timeRow) => timeRow.cells.some((c) => c.available)).map((timeRow) => (
-                                        <tr key={`${location}-time-${timeRow.hour}`}>
-                                          <th className="venue-court-time-cell">{formatHourCompact(timeRow.hour)}</th>
-                                          {timeRow.cells.map((cell, courtIndex) => {
-                                            const bookingUrl = cell.available ? getBookingUrl(location) : null;
-                                            const courtName = venueMatrix.courts[courtIndex];
-                                            const cellHint = cell.available ? `${courtName} · ${formatHourDisplay(timeRow.hour)}` : null;
-
-                                            return (
-                                              <td
-                                                key={`${location}-${timeRow.hour}-${courtName}`}
-                                                className={`venue-court-slot-cell ${cell.available ? 'available' : 'unavailable'} ${bookingUrl ? 'bookable' : ''}`}
-                                                onClick={() => handleCellClick(bookingUrl, location, timeRow.hour, cell.available ? 1 : 0, cell.price, 'matrix')}
-                                              >
-                                                {cell.available ? (
-                                                  <>
-                                                    {cell.price !== null && <span className="venue-court-slot-price">${cell.price}</span>}
-                                                    {cell.price === null && <span className="venue-court-slot-open">Open</span>}
-                                                    {cellHint && <span className="venue-court-slot-hint">{cellHint}</span>}
-                                                  </>
-                                                ) : (
-                                                  <span className="venue-court-slot-empty">-</span>
-                                                )}
-                                              </td>
-                                            );
-                                          })}
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              ) : (
-                                <p className="venue-details-empty">No available courts for current filters.</p>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
+                          </tr>
+                          {outdoorPickleballLocations.map(renderLocationRow)}
+                        </>
                       )}
-                    </React.Fragment>
-                  );
-                })
+                      {indoorPickleballLocations.length > 0 && (
+                        <>
+                          <tr className="court-section-header-row">
+                            <td colSpan={visibleHours.length + 1} className="court-section-header-cell">
+                              Indoor Courts
+                            </td>
+                          </tr>
+                          {indoorPickleballLocations.map(renderLocationRow)}
+                        </>
+                      )}
+                    </>
+                  ) : (
+                    allLocations.map(renderLocationRow)
+                  )
                 ) : (
                   <tr>
                     <td colSpan={visibleHours.length + 1} className="empty-row">
@@ -1657,11 +1911,18 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
       {pendingBookingUrl && (() => {
         const locInfo = parseLocationKey(pendingLocation);
         const address = locationAddresses[pendingLocation];
+        const venueType = getPickleballVenueType(pendingLocation);
+        const equipmentHire = getEquipmentHireInfo(pendingLocation);
+        const isHourBucketedPending = pendingHourBlockHours === 1;
         const todayStr = getSydneyTodayDate().toISOString().split('T')[0];
         const isToday = selectedDate === todayStr;
         const dayLabel = isToday ? 'Today' : new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', { weekday: 'long' });
         const dateLabel = new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-AU', { day: 'numeric', month: 'short' });
-        const timeLabel = pendingHour !== null ? formatHourCompact(pendingHour) : '—';
+        const timeLabel = pendingHour !== null
+          ? isHourBucketedPending
+            ? `${formatHourCompact(pendingHour)}–${formatHourCompact(pendingHour + pendingHourBlockHours)}`
+            : formatHourCompact(pendingHour)
+          : '—';
         const availLabel =
           pendingSource === 'matrix' && pendingCount === 1
             ? 'AVAILABLE'
@@ -1714,12 +1975,36 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                   <div className="booking-modal-info-card">
                     <span className="info-card-label">TIME</span>
                     <span className="info-card-primary">{timeLabel}</span>
-                    <span className="info-card-secondary">{sportMode === 'map' ? '30 mins' : '1 hour'}</span>
+                    <span className="info-card-secondary">
+                      {sportMode === 'map'
+                        ? isHourBucketedPending
+                          ? '1 hour block'
+                          : '30 mins'
+                        : '1 hour'}
+                    </span>
                   </div>
                   <div className="booking-modal-info-card">
                     <span className="info-card-label">PRICE</span>
                     <span className="info-card-primary">{pendingPrice !== null ? `$${pendingPrice}` : '—'}</span>
-                    <span className="info-card-secondary">{pendingPrice !== null ? (sportMode === 'map' ? 'per 30 mins' : 'per hour') : 'see site'}</span>
+                    <span className="info-card-secondary">
+                      {pendingPrice !== null
+                        ? (sportMode === 'map'
+                          ? isHourBucketedPending
+                            ? 'per hour'
+                            : 'per 30 mins'
+                          : 'per hour')
+                        : 'see site'}
+                    </span>
+                  </div>
+                  <div className="booking-modal-info-card">
+                    <span className="info-card-label">VENUE</span>
+                    <span className="info-card-primary">{venueType ? `${venueType === 'indoor' ? 'Indoor' : 'Outdoor'} courts` : 'Venue details'}</span>
+                    <span className="info-card-secondary">{venueType ? 'surface type' : locInfo.venueName}</span>
+                  </div>
+                  <div className="booking-modal-info-card">
+                    <span className="info-card-label">EQUIPMENT HIRE</span>
+                    <span className="info-card-primary">{equipmentHire ? 'Available' : 'Check venue'}</span>
+                    <span className="info-card-secondary">{equipmentHire ? `$${equipmentHire.price} per racquet` : 'pricing not listed'}</span>
                   </div>
                 </div>
                 <div className="booking-modal-actions-v2">

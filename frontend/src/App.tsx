@@ -5,7 +5,7 @@ import Header from './components/Header'
 import type { AggregatedCourt, SportMode } from './types'
 import './App.css'
 
-const apiBaseUrl = (import.meta.env.VITE_API_URL ?? 'https://when-baddy-api.onrender.com').replace(/\/$/, '')
+const apiBaseUrl = (import.meta.env.VITE_API_URL ?? 'http://localhost:3000').replace(/\/$/, '')
 
 function todayStr(): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -117,8 +117,8 @@ function App() {
       <footer className="app-footer">
         <p>
           {sportMode === 'grid'
-            ? 'Aggregating courts from Alpha Badminton, NBC Badminton, Pro1 Badminton, Roketto, Ryde Multisport & Camellia Indoor Sports'
-            : 'Pickleball preview mode — venue coverage and live court feeds are still being expanded'}
+            ? 'Aggregating courts from Alpha Badminton, NBC Badminton, Pro1 Badminton, Roketto, and Olympic Park'
+            : 'Aggregating pickleball courts from Pickle Point, Mindbody venues, and NBC Olympic Park Pickleball'}
         </p>
       </footer>
     </div>

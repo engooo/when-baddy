@@ -17,6 +17,18 @@ const USE_MOCK_DATA = process.env.MOCK_DATA === 'true';
 
 const CLUBS: ClubKey[] = ['alpha', 'nbc', 'pro1', 'roketto', 'picklepoint', 'mindbody'];
 
+function inferSport(club: ClubKey, locationName: string): 'badminton' | 'pickleball' {
+  if (club === 'picklepoint' || club === 'mindbody') {
+    return 'pickleball';
+  }
+
+  if (club === 'nbc' && /pickleball/i.test(locationName)) {
+    return 'pickleball';
+  }
+
+  return 'badminton';
+}
+
 function getSydneyTodayParts(): { day: number; month: number; year: number } {
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Australia/Sydney',
@@ -181,9 +193,19 @@ function normalizeData(data: CourtData): AggregatedCourt[] {
 
   for (const location of data.locations) {
     for (const court of location.courts) {
-      for (const slot of court.availability) {
+      const availability = Array.isArray(court.availability) ? court.availability : [];
+
+      if (!Array.isArray(court.availability)) {
+        console.warn(
+          `Skipping invalid availability for ${data.club}/${location.locationName}/${court.courtName}`,
+          court.availability
+        );
+      }
+
+      for (const slot of availability) {
         result.push({
           club: data.club,
+          sport: inferSport(data.club, location.locationName),
           location: location.locationName,
           locationId: location.locationId,
           address: location.address,
