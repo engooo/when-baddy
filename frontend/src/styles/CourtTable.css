@@ -2482,6 +2482,11 @@
     border-radius: 10px;
   }
 
+  /* On mobile, reduce hover lift to prevent overlap with venue name */
+  .availability-cell.bookable:hover {
+    transform: scale(1.015);
+  }
+
   .location-column,
   .location-cell {
     min-width: 198px;
