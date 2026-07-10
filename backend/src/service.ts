@@ -8,6 +8,7 @@ import type { AggregatedCourt, CourtData } from './types.js';
 import { getRandomMockData } from './mockData.js';
 
 type ClubKey = 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint' | 'mindbody';
+type SportFilter = 'badminton' | 'pickleball';
 
 const sourceCache = new Map<string, { data: AggregatedCourt[]; timestamp: number }>();
 const inflightSourceRequests = new Map<string, Promise<AggregatedCourt[]>>();
@@ -109,6 +110,18 @@ function getClubCacheKey(club: ClubKey, date: { day: number; month: number; year
   return `${club}:${getCacheKey(date)}`;
 }
 
+function getClubsForSport(sport?: SportFilter): ClubKey[] {
+  if (sport === 'badminton') {
+    return ['alpha', 'nbc', 'pro1', 'roketto'];
+  }
+
+  if (sport === 'pickleball') {
+    return ['nbc', 'picklepoint', 'mindbody'];
+  }
+
+  return CLUBS;
+}
+
 function triggerBackgroundRefresh(
   club: ClubKey,
   date: { day: number; month: number; year: number },
@@ -195,31 +208,42 @@ async function getClubDataWithCache(
 export async function fetchAllCourtData(
   date?: { day: number; month: number; year: number },
   maxAgeMs: number = 5 * 60 * 1000,
-  suburbs?: string[]
+  suburbs?: string[],
+  sport?: SportFilter
 ): Promise<AggregatedCourt[]> {
   if (USE_MOCK_DATA) {
     console.log('Using mock data...');
-    return getRandomMockData();
+    const mockRows = getRandomMockData();
+    const sportScopedMockRows = sport ? mockRows.filter((row) => row.sport === sport) : mockRows;
+
+    if (suburbs && suburbs.length > 0) {
+      const suburbSet = new Set(suburbs.map((s) => s.toLowerCase()));
+      return sportScopedMockRows.filter((row) => suburbSet.has(row.suburb.toLowerCase()));
+    }
+
+    return sportScopedMockRows;
   }
 
   const today = getSydneyTodayParts();
   const d = date ?? today;
   const effectiveMaxAgeMs = getDateMaxAgeMs(d, maxAgeMs);
+  const clubsToFetch = getClubsForSport(sport);
 
   console.log('Fetching court data from all clubs...');
 
   const clubRows = await Promise.all(
-    CLUBS.map((club) => getClubDataWithCache(club, d, effectiveMaxAgeMs))
+    clubsToFetch.map((club) => getClubDataWithCache(club, d, effectiveMaxAgeMs))
   );
 
   const allRows = clubRows.flat();
+  const sportScopedRows = sport ? allRows.filter((row) => row.sport === sport) : allRows;
 
   if (suburbs && suburbs.length > 0) {
     const suburbSet = new Set(suburbs.map((s) => s.toLowerCase()));
-    return allRows.filter((row) => suburbSet.has(row.suburb.toLowerCase()));
+    return sportScopedRows.filter((row) => suburbSet.has(row.suburb.toLowerCase()));
   }
 
-  return allRows;
+  return sportScopedRows;
 }
 
 function normalizeData(data: CourtData): AggregatedCourt[] {
@@ -259,14 +283,20 @@ function normalizeData(data: CourtData): AggregatedCourt[] {
   return result;
 }
 
-export function getCourtDataWithCache(date?: { day: number; month: number; year: number }, maxAgeMs: number = 5 * 60 * 1000, suburbs?: string[]): Promise<AggregatedCourt[]> {
+export function getCourtDataWithCache(
+  date?: { day: number; month: number; year: number },
+  maxAgeMs: number = 5 * 60 * 1000,
+  suburbs?: string[],
+  sport?: SportFilter
+): Promise<AggregatedCourt[]> {
   const today = getSydneyTodayParts();
   const d = date ?? today;
-  const cacheKey = getCacheKey(d);
+  const baseKey = getCacheKey(d);
+  const scopeKey = `${baseKey}:${sport ?? 'all'}`;
 
-  const inflight = inflightRequests.get(cacheKey);
+  const inflight = inflightRequests.get(scopeKey);
   if (inflight) {
-    console.log(`Joining in-flight fetch for ${cacheKey}`);
+    console.log(`Joining in-flight fetch for ${scopeKey}`);
     return inflight.then((data) => {
       if (suburbs && suburbs.length > 0) {
         const suburbSet = new Set(suburbs.map((s) => s.toLowerCase()));
@@ -276,12 +306,20 @@ export function getCourtDataWithCache(date?: { day: number; month: number; year:
     });
   }
 
-  const request = fetchAllCourtData(d, maxAgeMs, suburbs)
+  const request = fetchAllCourtData(d, maxAgeMs, undefined, sport)
+    .then((data) => {
+      if (suburbs && suburbs.length > 0) {
+        const suburbSet = new Set(suburbs.map((s) => s.toLowerCase()));
+        return data.filter((row) => suburbSet.has(row.suburb.toLowerCase()));
+      }
+
+      return data;
+    })
     .finally(() => {
-      inflightRequests.delete(cacheKey);
+      inflightRequests.delete(scopeKey);
     });
 
-  inflightRequests.set(cacheKey, request);
+  inflightRequests.set(scopeKey, request);
   return request;
 }
 
