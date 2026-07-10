@@ -1518,6 +1518,42 @@
   border-bottom: 2px solid var(--brand-green-current-border);
 }
 
+.availability-cell.hour-bucket-merged.current-hour::after {
+  display: none;
+}
+
+.availability-cell.hour-bucket-merged.current-hour-left::before,
+.availability-cell.hour-bucket-merged.current-hour-right::before {
+  content: '';
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  pointer-events: none;
+  z-index: 2;
+  border-left: 2px solid var(--brand-green-current-border);
+  border-right: 2px solid var(--brand-green-current-border);
+}
+
+.availability-cell.hour-bucket-merged.current-hour-left::before {
+  left: -1px;
+  width: calc(50% + 1px);
+}
+
+.availability-cell.hour-bucket-merged.current-hour-right::before {
+  right: -1px;
+  width: calc(50% + 1px);
+}
+
+.weekly-court-table tbody tr:first-child .availability-cell.hour-bucket-merged.current-hour-left::before,
+.weekly-court-table tbody tr:first-child .availability-cell.hour-bucket-merged.current-hour-right::before {
+  border-top: 2px solid var(--brand-green-current-border);
+}
+
+.weekly-court-table tbody tr:last-child .availability-cell.hour-bucket-merged.current-hour-left::before,
+.weekly-court-table tbody tr:last-child .availability-cell.hour-bucket-merged.current-hour-right::before {
+  border-bottom: 2px solid var(--brand-green-current-border);
+}
+
 .availability-card {
   min-height: 56px;
   border-radius: 12px;
