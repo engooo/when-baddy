@@ -134,7 +134,9 @@ function App() {
       setCourts([])
     }
 
-    setLoading(true)
+    // Keep cached data visible and refresh in the background.
+    // Only show blocking loading state when there is no cache to render.
+    setLoading(!cachedEntry)
     setError(null)
 
     try {
