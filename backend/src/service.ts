@@ -109,6 +109,40 @@ function getClubCacheKey(club: ClubKey, date: { day: number; month: number; year
   return `${club}:${getCacheKey(date)}`;
 }
 
+function triggerBackgroundRefresh(
+  club: ClubKey,
+  date: { day: number; month: number; year: number },
+  sourceKey: string
+): void {
+  if (inflightSourceRequests.has(sourceKey)) {
+    return;
+  }
+
+  const request = fetchClubData(club, date)
+    .then((rawData) => {
+      if (!rawData) {
+        return sourceCache.get(sourceKey)?.data ?? [];
+      }
+
+      const normalized = normalizeData(rawData);
+      if (normalized.length > 0) {
+        sourceCache.set(sourceKey, { data: normalized, timestamp: Date.now() });
+        return normalized;
+      }
+
+      return sourceCache.get(sourceKey)?.data ?? [];
+    })
+    .catch((e) => {
+      console.error(`[swr] Background refresh failed for ${club}/${getCacheKey(date)}:`, e);
+      return sourceCache.get(sourceKey)?.data ?? [];
+    })
+    .finally(() => {
+      inflightSourceRequests.delete(sourceKey);
+    });
+
+  inflightSourceRequests.set(sourceKey, request);
+}
+
 async function getClubDataWithCache(
   club: ClubKey,
   date: { day: number; month: number; year: number },
@@ -118,10 +152,19 @@ async function getClubDataWithCache(
   const sourceKey = getClubCacheKey(club, date);
   const cached = sourceCache.get(sourceKey);
 
+  // Fresh cache — return immediately
   if (cached && now - cached.timestamp < maxAgeMs) {
     return cached.data;
   }
 
+  // Stale cache — return immediately and refresh in background
+  if (cached) {
+    console.log(`[swr] Returning stale ${club} cache for ${getCacheKey(date)}, refreshing in background`);
+    triggerBackgroundRefresh(club, date, sourceKey);
+    return cached.data;
+  }
+
+  // No cache at all — must wait for first scrape
   const inflight = inflightSourceRequests.get(sourceKey);
   if (inflight) {
     return inflight;
@@ -130,10 +173,6 @@ async function getClubDataWithCache(
   const request = fetchClubData(club, date)
     .then((rawData) => {
       if (!rawData) {
-        if (cached) {
-          console.warn(`Using stale ${club} cache for ${getCacheKey(date)} after scrape failure`);
-          return cached.data;
-        }
         return [];
       }
 
@@ -141,11 +180,6 @@ async function getClubDataWithCache(
       if (normalized.length > 0) {
         sourceCache.set(sourceKey, { data: normalized, timestamp: Date.now() });
         return normalized;
-      }
-
-      if (cached) {
-        console.warn(`Using stale ${club} cache for ${getCacheKey(date)} after empty scrape response`);
-        return cached.data;
       }
 
       return [];
