@@ -1708,7 +1708,7 @@
   border-color: rgba(14, 43, 31, 0.95) transparent transparent transparent;
 }
 
-.availability-cell.connected-mode.bookable:hover .availability-hover-hint {
+.availability-cell.bookable:hover .availability-hover-hint {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
