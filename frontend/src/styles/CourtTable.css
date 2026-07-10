@@ -2487,9 +2487,10 @@
     transform: scale(1.015);
   }
 
-  /* On mobile, hide hover tooltip to prevent overlap with venue name */
+  /* On mobile, keep tooltip visible but under sticky venue column */
   .availability-hover-hint {
-    display: none;
+    display: block;
+    z-index: 1;
   }
 
   /* On mobile, align court section headers to the left for better visibility */
