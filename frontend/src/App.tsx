@@ -6,6 +6,83 @@ import type { AggregatedCourt, SportMode } from './types'
 import './App.css'
 
 const apiBaseUrl = (import.meta.env.VITE_API_URL ?? 'http://localhost:3000').replace(/\/$/, '')
+const COURT_CACHE_STORAGE_KEY = 'when-baddy:courts-cache:v1'
+
+type CachedCourtEntry = {
+  data: AggregatedCourt[]
+  cachedAt: number
+}
+
+function getStorage(): Storage | null {
+  if (typeof window === 'undefined') {
+    return null
+  }
+
+  return window.localStorage
+}
+
+function getDateDistanceFromToday(targetDate: string): number | null {
+  const targetParts = targetDate.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  const todayParts = todayStr().match(/^(\d{4})-(\d{2})-(\d{2})$/)
+
+  if (!targetParts || !todayParts) {
+    return null
+  }
+
+  const target = new Date(Number(targetParts[1]), Number(targetParts[2]) - 1, Number(targetParts[3]))
+  const today = new Date(Number(todayParts[1]), Number(todayParts[2]) - 1, Number(todayParts[3]))
+
+  return Math.floor((target.getTime() - today.getTime()) / (24 * 60 * 60 * 1000))
+}
+
+function getCacheMaxAgeMs(date: string): number {
+  const dayDiff = getDateDistanceFromToday(date)
+
+  if (dayDiff === null || dayDiff <= 1) {
+    return 5 * 60 * 1000
+  }
+
+  return 30 * 60 * 1000
+}
+
+function loadDateCache(): Map<string, CachedCourtEntry> {
+  const storage = getStorage()
+
+  if (!storage) {
+    return new Map()
+  }
+
+  try {
+    const raw = storage.getItem(COURT_CACHE_STORAGE_KEY)
+    if (!raw) {
+      return new Map()
+    }
+
+    const parsed = JSON.parse(raw) as Record<string, CachedCourtEntry>
+    const entries = Object.entries(parsed).filter(([, value]) => (
+      value && Array.isArray(value.data) && typeof value.cachedAt === 'number'
+    ))
+
+    return new Map(entries)
+  } catch (error) {
+    console.warn('Failed to load cached court data from local storage', error)
+    return new Map()
+  }
+}
+
+function persistDateCache(cache: Map<string, CachedCourtEntry>): void {
+  const storage = getStorage()
+
+  if (!storage) {
+    return
+  }
+
+  try {
+    storage.setItem(COURT_CACHE_STORAGE_KEY, JSON.stringify(Object.fromEntries(cache)))
+  } catch (error) {
+    console.warn('Failed to persist court data cache to local storage', error)
+  }
+}
 
 function todayStr(): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -33,28 +110,44 @@ function App() {
   const [error, setError] = useState<string | null>(null)
   const [selectedDate, setSelectedDate] = useState<string>(todayStr())
   const [sportMode, setSportMode] = useState<SportMode>('grid')
-  const dateCache = useRef<Map<string, AggregatedCourt[]>>(new Map())
+  const dateCache = useRef<Map<string, CachedCourtEntry>>(loadDateCache())
   const latestRequestRef = useRef(0)
 
   const fetchCourts = async (date: string, forceRefresh = false) => {
     const requestId = ++latestRequestRef.current
-    if (!forceRefresh && dateCache.current.has(date)) {
-      setCourts(dateCache.current.get(date)!)
+    const cachedEntry = dateCache.current.get(date)
+    const hasCachedData = Boolean(cachedEntry && cachedEntry.data.length > 0)
+    const isFreshCache = Boolean(
+      cachedEntry && Date.now() - cachedEntry.cachedAt < getCacheMaxAgeMs(date)
+    )
+
+    if (!forceRefresh && cachedEntry && isFreshCache) {
+      setError(null)
+      setCourts(cachedEntry.data)
       setLoading(false)
       return
     }
+
+    if (cachedEntry) {
+      setCourts(cachedEntry.data)
+    } else {
+      setCourts([])
+    }
+
     setLoading(true)
     setError(null)
-    setCourts([])
+
     try {
       const apiUrl = `${apiBaseUrl}/api/courts?date=${date}`
       const response = await axios.get(apiUrl)
       if (requestId !== latestRequestRef.current) return
       const data: AggregatedCourt[] = response.data.data
       if (data.length > 0) {
-        dateCache.current.set(date, data)
+        dateCache.current.set(date, { data, cachedAt: Date.now() })
+        persistDateCache(dateCache.current)
       } else {
         dateCache.current.delete(date)
+        persistDateCache(dateCache.current)
       }
       setCourts(data)
     } catch (err) {
@@ -71,6 +164,11 @@ function App() {
         }
       } else if (err instanceof Error) {
         message = err.message
+      }
+
+      if (hasCachedData && cachedEntry) {
+        setCourts(cachedEntry.data)
+        message = `${message}. Showing cached results.`
       }
 
       setError(message)

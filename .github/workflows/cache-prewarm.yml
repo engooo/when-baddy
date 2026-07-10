@@ -1,0 +1,32 @@
+name: Cache Prewarm
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  prewarm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger backend prewarm endpoint
+        env:
+          PREWARM_URL: ${{ secrets.PREWARM_URL }}
+          PREWARM_WEBHOOK_TOKEN: ${{ secrets.PREWARM_WEBHOOK_TOKEN }}
+        run: |
+          if [[ -z "$PREWARM_URL" ]]; then
+            echo "Missing required secret: PREWARM_URL"
+            exit 1
+          fi
+
+          auth_header=()
+          if [[ -n "$PREWARM_WEBHOOK_TOKEN" ]]; then
+            auth_header=(-H "Authorization: Bearer $PREWARM_WEBHOOK_TOKEN")
+          fi
+
+          curl --fail --show-error --silent \
+            -X POST "$PREWARM_URL" \
+            "${auth_header[@]}" \
+            -H "Content-Type: application/json" \
+            --data '{"clearExistingCache": false}'

@@ -139,6 +139,47 @@ Example response shape:
 
 Clears cached scrape data and fetches fresh results.
 
+### `POST /api/prewarm`
+
+Runs cache warm-up for today plus optional lookahead days. This endpoint is designed for external schedulers (GitHub Actions cron, cloud scheduler, etc.).
+
+Optional auth:
+
+- Set `PREWARM_WEBHOOK_TOKEN` on the backend.
+- Send either header `Authorization: Bearer <token>` or `x-prewarm-token: <token>`.
+
+Optional request params:
+
+- `lookaheadDays` in JSON body or query string (clamped to 0..14)
+- `clearExistingCache` in JSON body (`true` to clear before warming)
+
+Example:
+
+```bash
+curl -X POST "https://your-api.example.com/api/prewarm?lookaheadDays=1" \
+  -H "Authorization: Bearer $PREWARM_WEBHOOK_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"clearExistingCache": false}'
+```
+
+## External Scheduler Setup
+
+If you want warm cache even when no users visit, call `POST /api/prewarm` on a schedule from an external job.
+
+Recommended environment variables on backend:
+
+- `PREWARM_WEBHOOK_TOKEN=<long-random-secret>`
+- `CACHE_PREWARM_ENABLED=false` if you only want external scheduling (turns off in-process interval)
+
+Example scheduler: GitHub Actions cron
+
+- Workflow file: `.github/workflows/cache-prewarm.yml`
+- Required secrets:
+  - `PREWARM_URL` (for example `https://your-api.example.com/api/prewarm?lookaheadDays=1`)
+  - `PREWARM_WEBHOOK_TOKEN`
+
+The workflow is included in this repo and can be adjusted to your preferred cadence.
+
 ## Notes
 
 - The app depends on YepBooking HTML structure staying consistent.
