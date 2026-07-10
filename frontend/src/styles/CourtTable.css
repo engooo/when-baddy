@@ -2492,6 +2492,11 @@
     display: none;
   }
 
+  /* On mobile, align court section headers to the left for better visibility */
+  .court-section-header-row .court-section-header-cell {
+    text-align: left;
+  }
+
   .location-column,
   .location-cell {
     min-width: 198px;
