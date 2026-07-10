@@ -2485,12 +2485,24 @@
   /* On mobile, reduce hover lift to prevent overlap with venue name */
   .availability-cell.bookable:hover {
     transform: scale(1.015);
+    z-index: 4;
   }
 
-  /* On mobile, keep tooltip visible but under sticky venue column */
+  /* On mobile, keep tooltip visible and allow it over the time header row */
   .availability-hover-hint {
     display: block;
-    z-index: 1;
+    z-index: 8;
+  }
+
+  /* Keep sticky venue column above hover layers while tooltip can still sit over time headers */
+  .location-cell {
+    z-index: 12;
+  }
+
+  .location-column {
+    position: sticky;
+    left: 0;
+    z-index: 13;
   }
 
   /* On mobile, align court section headers to the left for better visibility */
