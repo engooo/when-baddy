@@ -2,7 +2,10 @@ name: Cache Prewarm
 
 on:
   schedule:
-    - cron: '*/10 * * * *'
+    # Every 10 minutes between 5am–11pm Sydney AEST (UTC+10)
+    # 5am–11pm AEST = 7pm–1pm UTC (wraps midnight UTC)
+    - cron: '*/10 19-23 * * *'  # 5am–9am Sydney (7pm–11pm UTC prev day)
+    - cron: '*/10 0-12 * * *'   # 10am–11pm Sydney (0am–12pm UTC)
   workflow_dispatch:
 
 jobs:
