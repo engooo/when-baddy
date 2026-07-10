@@ -200,7 +200,8 @@ function App() {
   }
 
   const handleRefresh = () => {
-    dateCache.current.delete(getDateCacheKey(selectedDate, sportMode))
+    // Keep existing cached data visible while forcing a background refresh.
+    // This avoids blank/loading states during manual refresh.
     fetchCourts(selectedDate, true, sportMode)
   }
 
@@ -234,8 +235,8 @@ function App() {
       <footer className="app-footer">
         <p>
           {sportMode === 'grid'
-            ? 'Aggregating courts from Alpha Badminton, NBC Badminton, Pro1 Badminton, Roketto, and Olympic Park'
-            : 'Aggregating pickleball courts from Pickle Point, Mindbody venues, and NBC Olympic Park Pickleball'}
+            ? 'Built by a bad baddy player'
+            : 'Find a court to tickle your pickle!'}
         </p>
       </footer>
     </div>
