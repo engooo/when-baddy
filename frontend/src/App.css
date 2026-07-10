@@ -11,7 +11,7 @@
   position: relative;
   overflow: hidden;
   background: linear-gradient(180deg, #0a9a66 0%, #06815d 100%);
-  min-height: 350px;
+  min-height: 280px;
   border-bottom: 0;
 }
 
@@ -32,12 +32,12 @@
 .hero-header-orb {
   position: absolute;
   border-radius: 999px;
-  background: rgba(12, 157, 117, 0.55);
+  background: rgba(12, 157, 117, 0.15);
   pointer-events: none;
 }
 
 .hero-header-pickleball .hero-header-orb {
-  background: rgba(108, 235, 204, 0.18);
+  background: rgba(108, 235, 204, 0.08);
 }
 
 .hero-header-orb-left {
@@ -60,7 +60,7 @@
   max-width: 1080px;
   margin: 0 auto;
   text-align: center;
-  padding: 7.2rem 1.5rem 8.4rem;
+  padding: 3.1rem 1.5rem 5.2rem;
 }
 
 .hero-header-title {
@@ -81,11 +81,11 @@
 }
 
 .hero-header-subtitle {
-  margin: 2rem auto 0;
+  margin: 0.6rem auto 0;
   color: #abebd7;
   text-transform: uppercase;
   letter-spacing: 0.11em;
-  font-size: clamp(0.98rem, 2.2vw, 2.05rem);
+  font-size: clamp(0.9rem, 2vw, 1.4rem);
   font-weight: 500;
   max-width: 100%;
   white-space: nowrap;
@@ -142,7 +142,7 @@
 
 @media (max-width: 768px) {
   .hero-header {
-    min-height: 300px;
+    min-height: 170px;
   }
 
   .hero-header-grid {
@@ -150,21 +150,21 @@
   }
 
   .hero-header-orb-left {
-    width: 230px;
-    height: 230px;
+    width: 180px;
+    height: 180px;
     left: -90px;
     top: 26px;
   }
 
   .hero-header-orb-right {
-    width: 160px;
-    height: 160px;
+    width: 120px;
+    height: 120px;
     right: -36px;
     top: -20px;
   }
 
   .hero-header-inner {
-    padding: 6rem 1rem 6.8rem;
+    padding: 1.8rem 1rem 2rem;
   }
 
   .hero-header-title {

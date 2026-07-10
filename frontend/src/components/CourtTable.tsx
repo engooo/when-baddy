@@ -1516,7 +1516,22 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
 
                 <div className="table-filters filters-modal-content" role="group" aria-label="Filters">
                   <div className="filter-field filter-toggle-field">
-                    <span>Suburbs</span>
+                    <div className="suburb-filter-head">
+                      <span>Suburbs</span>
+                      <button
+                        type="button"
+                        className="suburb-select-all"
+                        onClick={() => {
+                          if (selectedSuburbs.length === allSuburbsInCourts.length) {
+                            setSelectedSuburbs([]);
+                            return;
+                          }
+                          setSelectedSuburbs(allSuburbsInCourts);
+                        }}
+                      >
+                        {selectedSuburbs.length === allSuburbsInCourts.length ? 'Clear' : 'Select All'}
+                      </button>
+                    </div>
                     <div className="suburb-pill-list" role="group" aria-label="Suburb filters">
                       {allSuburbsInCourts.map((suburb) => {
                         const isActive = selectedSuburbs.includes(suburb);
@@ -1619,7 +1634,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                       className="filters-apply-btn"
                       onClick={() => setIsFiltersModalOpen(false)}
                     >
-                      Done
+                      Apply Filters
                     </button>
                   </div>
                 </div>
