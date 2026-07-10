@@ -10,8 +10,6 @@ export default function Header({ sportMode }: HeaderProps) {
   return (
     <header className={`hero-header ${isPickleball ? 'hero-header-pickleball' : ''}`}>
       <div className="hero-header-grid" aria-hidden="true" />
-      <div className="hero-header-orb hero-header-orb-left" aria-hidden="true" />
-      <div className="hero-header-orb hero-header-orb-right" aria-hidden="true" />
 
       <div className="hero-header-inner">
         <h1 className="hero-header-title">

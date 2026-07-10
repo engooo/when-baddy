@@ -204,7 +204,12 @@ app.get('/api/courts', async (req, res) => {
       suburbs = req.query.suburbs.split(',').map((s) => s.trim());
     }
 
-    const data = await getCourtDataWithCache(date, undefined, suburbs);
+    let sport: 'badminton' | 'pickleball' | undefined;
+    if (req.query.sport === 'badminton' || req.query.sport === 'pickleball') {
+      sport = req.query.sport;
+    }
+
+    const data = await getCourtDataWithCache(date, undefined, suburbs, sport);
     const byClub = data.reduce<Record<string, number>>((acc, row) => {
       acc[row.club] = (acc[row.club] || 0) + 1;
       return acc;

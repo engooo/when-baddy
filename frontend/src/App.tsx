@@ -13,6 +13,16 @@ type CachedCourtEntry = {
   cachedAt: number
 }
 
+type ApiSport = 'badminton' | 'pickleball'
+
+function getApiSportFromMode(mode: SportMode): ApiSport {
+  return mode === 'map' ? 'pickleball' : 'badminton'
+}
+
+function getDateCacheKey(date: string, mode: SportMode): string {
+  return `${date}:${getApiSportFromMode(mode)}`
+}
+
 function getStorage(): Storage | null {
   if (typeof window === 'undefined') {
     return null
@@ -113,9 +123,11 @@ function App() {
   const dateCache = useRef<Map<string, CachedCourtEntry>>(loadDateCache())
   const latestRequestRef = useRef(0)
 
-  const fetchCourts = async (date: string, forceRefresh = false) => {
+  const fetchCourts = async (date: string, forceRefresh = false, mode: SportMode = sportMode) => {
     const requestId = ++latestRequestRef.current
-    const cachedEntry = dateCache.current.get(date)
+    const dateCacheKey = getDateCacheKey(date, mode)
+    const apiSport = getApiSportFromMode(mode)
+    const cachedEntry = dateCache.current.get(dateCacheKey)
     const hasCachedData = Boolean(cachedEntry && cachedEntry.data.length > 0)
     const isFreshCache = Boolean(
       cachedEntry && Date.now() - cachedEntry.cachedAt < getCacheMaxAgeMs(date)
@@ -140,15 +152,15 @@ function App() {
     setError(null)
 
     try {
-      const apiUrl = `${apiBaseUrl}/api/courts?date=${date}`
+      const apiUrl = `${apiBaseUrl}/api/courts?date=${date}&sport=${apiSport}`
       const response = await axios.get(apiUrl)
       if (requestId !== latestRequestRef.current) return
       const data: AggregatedCourt[] = response.data.data
       if (data.length > 0) {
-        dateCache.current.set(date, { data, cachedAt: Date.now() })
+        dateCache.current.set(dateCacheKey, { data, cachedAt: Date.now() })
         persistDateCache(dateCache.current)
       } else {
-        dateCache.current.delete(date)
+        dateCache.current.delete(dateCacheKey)
         persistDateCache(dateCache.current)
       }
       setCourts(data)
@@ -184,12 +196,17 @@ function App() {
 
   const handleDateChange = (date: string) => {
     setSelectedDate(date)
-    fetchCourts(date)
+    fetchCourts(date, false, sportMode)
   }
 
   const handleRefresh = () => {
-    dateCache.current.delete(selectedDate)
-    fetchCourts(selectedDate, true)
+    dateCache.current.delete(getDateCacheKey(selectedDate, sportMode))
+    fetchCourts(selectedDate, true, sportMode)
+  }
+
+  const handleSportModeChange = (mode: SportMode) => {
+    setSportMode(mode)
+    fetchCourts(selectedDate, false, mode)
   }
 
   useEffect(() => {
@@ -210,7 +227,7 @@ function App() {
           selectedDate={selectedDate}
           onDateChange={handleDateChange}
           sportMode={sportMode}
-          onSportModeChange={setSportMode}
+          onSportModeChange={handleSportModeChange}
         />
       </main>
 

@@ -1344,6 +1344,13 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                   const mergedAvailClass = getAvailabilityClassFromCount(mergedCount);
                   const bookingUrl = mergedCount > 0 ? getBookingUrl(location) : null;
                   const showPrice = mergedCount > 0 && mergedPrice !== null && mergedPrice > 0;
+                  const mergedCurrentHourClass = shouldHighlightCurrentHour
+                    ? hour === currentTimeColumn
+                      ? 'current-hour-left'
+                      : hour + 0.5 === currentTimeColumn
+                        ? 'current-hour-right'
+                        : ''
+                    : '';
                   const bookingHint =
                     bookingUrl
                       ? `Book from ${formatHourDisplay(hour)} to ${formatHourDisplay(hour + 1)}`
@@ -1353,7 +1360,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                     <td
                       key={`${hour}-merged`}
                       colSpan={2}
-                      className={`availability-cell ${mergedAvailClass} ${bookingUrl ? 'bookable' : ''} ${shouldHighlightCurrentHour && (hour === currentTimeColumn || hour + 0.5 === currentTimeColumn) ? 'current-hour' : ''} ${isPickleballCell ? 'connected-mode' : ''} ${mergedRunClass} hour-bucket-merged`}
+                      className={`availability-cell ${mergedAvailClass} ${bookingUrl ? 'bookable' : ''} ${shouldHighlightCurrentHour && (hour === currentTimeColumn || hour + 0.5 === currentTimeColumn) ? 'current-hour' : ''} ${mergedCurrentHourClass} ${isPickleballCell ? 'connected-mode' : ''} ${mergedRunClass} hour-bucket-merged`}
                       onClick={() => handleCellClick(bookingUrl, location, hour, mergedCount, mergedPrice, 'table', 1)}
                     >
                       <div className="availability-card">
@@ -1392,9 +1399,10 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
               }
 
               const showPrice = count > 0 && price !== null && price > 0;
+              const slotDurationHours = isPickleballCell && !isHourBucketedPickleball ? 0.5 : 1;
               const bookingHint =
-                isPickleballCell && bookingUrl
-                  ? `Book from ${formatHourDisplay(hour)} to ${formatHourDisplay(hour + 0.5)}`
+                bookingUrl
+                  ? `Book from ${formatHourDisplay(hour)} to ${formatHourDisplay(hour + slotDurationHours)}`
                   : null;
 
               hourCells.push(
@@ -1621,7 +1629,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         </>
       )}
 
-      <section className="filter-section" aria-label="Sport toggle section">
+      <section className="filter-section sport-toggle-overlay-section" aria-label="Sport toggle section">
         <div className="filter-section-inner">
 
           <div className="sport-toggle-row">
@@ -1801,7 +1809,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                     return (
                     <th
                       key={hour}
-                      className={`time-header ${isCurrentHourBlock ? 'current-hour' : ''} ${isHalfHour ? 'is-half-hour' : ''}`}
+                      className={`time-header ${isHalfHour ? 'is-half-hour' : ''} ${isCurrentHourBlock ? 'current-hour' : ''}`}
                       aria-label={formatHourDisplay(hour)}
                     >
                       {isCurrentHourBlock && !isHalfHour ? (
