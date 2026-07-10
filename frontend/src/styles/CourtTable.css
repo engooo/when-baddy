@@ -2487,6 +2487,11 @@
     transform: scale(1.015);
   }
 
+  /* On mobile, hide hover tooltip to prevent overlap with venue name */
+  .availability-hover-hint {
+    display: none;
+  }
+
   .location-column,
   .location-cell {
     min-width: 198px;
