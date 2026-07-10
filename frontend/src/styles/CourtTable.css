@@ -1609,7 +1609,7 @@
 }
 
 .availability-cell.hour-bucket-merged.none-available .availability-card {
-  border-color: #b8c8bf;
+  border: none;
 }
 
 .availability-cell.hour-bucket-merged.one-available .availability-card {
