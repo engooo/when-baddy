@@ -1540,8 +1540,32 @@
 }
 
 .availability-cell.bookable:hover .availability-card {
-  box-shadow: 0 10px 24px rgba(10, 171, 114, 0.22), 0 0 0 2px rgba(10, 171, 114, 0.55);
   filter: saturate(1.08) brightness(1.03);
+}
+
+/* Match shadow color to cell background color */
+.availability-cell.bookable.none-available:hover .availability-card {
+  box-shadow: 0 10px 24px rgba(184, 200, 191, 0.22), 0 0 0 2px rgba(184, 200, 191, 0.55);
+}
+
+.availability-cell.bookable.one-available:hover .availability-card {
+  box-shadow: 0 10px 24px rgba(184, 97, 79, 0.22), 0 0 0 2px rgba(184, 97, 79, 0.55);
+}
+
+.availability-cell.bookable.low-available:hover .availability-card {
+  box-shadow: 0 10px 24px rgba(195, 161, 91, 0.22), 0 0 0 2px rgba(195, 161, 91, 0.55);
+}
+
+.availability-cell.bookable.medium-available:hover .availability-card {
+  box-shadow: 0 10px 24px rgba(119, 180, 154, 0.22), 0 0 0 2px rgba(119, 180, 154, 0.55);
+}
+
+.availability-cell.bookable.high-available:hover .availability-card {
+  box-shadow: 0 10px 24px rgba(79, 159, 125, 0.22), 0 0 0 2px rgba(79, 159, 125, 0.55);
+}
+
+.availability-cell.bookable.very-high-available:hover .availability-card {
+  box-shadow: 0 10px 24px rgba(79, 159, 125, 0.22), 0 0 0 2px rgba(79, 159, 125, 0.55);
 }
 
 .availability-cell.bookable:hover .availability-number {
