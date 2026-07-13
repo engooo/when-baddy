@@ -4,10 +4,11 @@ import { scrapePro1Badminton } from './scrapers/pro1Scraper.js';
 import { scrapeRokettoBadminton } from './scrapers/rokettoScraper.js';
 import { scrapePicklePoint } from './scrapers/picklepointScraper.js';
 import { scrapeMindbody } from './scrapers/mindbodyScraper.js';
+import { scrapeTennisVenues } from './scrapers/tennisVenuesScraper.js';
 import type { AggregatedCourt, CourtData } from './types.js';
 import { getRandomMockData } from './mockData.js';
 
-type ClubKey = 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint' | 'mindbody';
+type ClubKey = 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint' | 'mindbody' | 'tennisvenues';
 type SportFilter = 'badminton' | 'pickleball';
 
 const sourceCache = new Map<string, { data: AggregatedCourt[]; timestamp: number }>();
@@ -16,10 +17,10 @@ const inflightRequests = new Map<string, Promise<AggregatedCourt[]>>();
 
 const USE_MOCK_DATA = process.env.MOCK_DATA === 'true';
 
-const CLUBS: ClubKey[] = ['alpha', 'nbc', 'pro1', 'roketto', 'picklepoint', 'mindbody'];
+const CLUBS: ClubKey[] = ['alpha', 'nbc', 'pro1', 'roketto', 'picklepoint', 'mindbody', 'tennisvenues'];
 
 function inferSport(club: ClubKey, locationName: string): 'badminton' | 'pickleball' {
-  if (club === 'picklepoint' || club === 'mindbody') {
+  if (club === 'picklepoint' || club === 'mindbody' || club === 'tennisvenues') {
     return 'pickleball';
   }
 
@@ -100,6 +101,13 @@ async function fetchClubData(club: ClubKey, date: { day: number; month: number; 
     });
   }
 
+  if (club === 'tennisvenues') {
+    return scrapeTennisVenues(date).catch((e) => {
+      console.error('Tennis Venues scrape failed:', e);
+      return null;
+    });
+  }
+
   return scrapePicklePoint(date).catch((e) => {
     console.error('Picklepoint scrape failed:', e);
     return null;
@@ -116,7 +124,7 @@ function getClubsForSport(sport?: SportFilter): ClubKey[] {
   }
 
   if (sport === 'pickleball') {
-    return ['nbc', 'picklepoint', 'mindbody'];
+    return ['nbc', 'picklepoint', 'mindbody', 'tennisvenues'];
   }
 
   return CLUBS;

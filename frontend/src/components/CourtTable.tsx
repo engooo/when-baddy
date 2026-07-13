@@ -17,7 +17,7 @@ import {
 import '../styles/CourtTable.css';
 
 interface AggregatedCourt {
-  club: 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint' | 'mindbody';
+  club: 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint' | 'mindbody' | 'tennisvenues';
   sport?: 'badminton' | 'pickleball';
   location: string;
   locationId: string;
@@ -85,6 +85,10 @@ const PICKLEBALL_VENUE_FALLBACKS = [
   {
     locationKey: 'NBC Olympic Park Pickleball',
     address: 'Olympic Blvd, Sydney Olympic Park NSW 2127',
+  },
+  {
+    locationKey: 'TennisVenues Southend Tennis Centre',
+    address: '22 Chiswick St, Strathfield South NSW 2136',
   },
 ];
 
@@ -308,6 +312,17 @@ function parseLocationKey(locationKey: string): {
     };
   }
 
+  if (locationKey.startsWith('TennisVenues ')) {
+    return {
+      venueKey: 'tennisvenues-southend',
+      venueName: 'Southend Tennis Centre',
+      locationName: locationKey.replace(/^TennisVenues\s+/, ''),
+      logoSrc: '/assets/venue-logos/southend-tennis-centre-logo.jpeg',
+      badgeText: 'ST',
+      badgeClass: 'venue-logo-default',
+    };
+  }
+
   return {
     venueKey: 'default',
     venueName: 'Venue',
@@ -338,13 +353,16 @@ function getPickleballVenueType(locationKey: string): 'indoor' | 'outdoor' | nul
   return null;
 }
 
-function getEquipmentHireInfo(locationKey: string): { available: boolean; price: number } | null {
+function getEquipmentHireInfo(
+  locationKey: string,
+): { available: boolean; price: number; unitLabel: string } | null {
   if (
     locationKey === 'Mindbody Camellia Indoor Sports Centre' ||
     locationKey === 'Mindbody Ryde Multisport & Racquet Centre' ||
-    locationKey.startsWith('Picklepoint ')
+    locationKey.startsWith('Picklepoint ') ||
+    locationKey === 'TennisVenues Southend Tennis Centre'
   ) {
-    return { available: true, price: 5 };
+    return { available: true, price: 5, unitLabel: 'each' };
   }
 
   return null;
@@ -359,7 +377,7 @@ function inferCourtSport(court: AggregatedCourt): 'badminton' | 'pickleball' {
     return court.sport;
   }
 
-  if (court.club === 'picklepoint' || court.club === 'mindbody') {
+  if (court.club === 'picklepoint' || court.club === 'mindbody' || court.club === 'tennisvenues') {
     return 'pickleball';
   }
 
@@ -552,6 +570,10 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
 
     if (court.club === 'picklepoint') {
       return 'https://clubspark.net/Picklepoint/Booking/BookByDate';
+    }
+
+    if (court.club === 'tennisvenues') {
+      return 'https://www.tennisvenues.com.au/booking/southend-tc';
     }
 
     if (court.club === 'mindbody') {
@@ -895,6 +917,8 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                 ? 'Picklepoint'
                 : court.club === 'mindbody'
                   ? 'Mindbody'
+                  : court.club === 'tennisvenues'
+                    ? 'TennisVenues'
                   : 'Roketto';
       const locationKey = `${clubLabel} ${court.location}`;
       if (!grouped[locationKey]) {
@@ -921,6 +945,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         : court.club === 'pro1' ? 'Pro1'
         : court.club === 'picklepoint' ? 'Picklepoint'
         : court.club === 'mindbody' ? 'Mindbody'
+        : court.club === 'tennisvenues' ? 'TennisVenues'
         : 'Roketto';
       const locationKey = `${clubLabel} ${court.location}`;
       if (!map[locationKey] && court.address) {
@@ -940,6 +965,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         : court.club === 'pro1' ? 'Pro1'
         : court.club === 'picklepoint' ? 'Picklepoint'
         : court.club === 'mindbody' ? 'Mindbody'
+        : court.club === 'tennisvenues' ? 'TennisVenues'
         : 'Roketto';
       const locationKey = `${clubLabel} ${court.location}`;
 
@@ -2033,7 +2059,9 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                   <div className="booking-modal-info-card">
                     <span className="info-card-label">EQUIPMENT HIRE</span>
                     <span className="info-card-primary">{equipmentHire ? 'Available' : 'Check venue'}</span>
-                    <span className="info-card-secondary">{equipmentHire ? `$${equipmentHire.price} per racquet` : 'pricing not listed'}</span>
+                    <span className="info-card-secondary">
+                      {equipmentHire ? `$${equipmentHire.price} ${equipmentHire.unitLabel}` : 'pricing not listed'}
+                    </span>
                   </div>
                 </div>
                 <div className="booking-modal-actions-v2">

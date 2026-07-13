@@ -235,7 +235,7 @@ function App() {
       <footer className="app-footer">
         <p>
           {sportMode === 'grid'
-            ? 'Built by a bad baddy player'
+            ? ''
             : 'Find a court to tickle your pickle!'}
         </p>
       </footer>
