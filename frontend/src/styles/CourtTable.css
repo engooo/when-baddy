@@ -1904,10 +1904,12 @@
 }
 
 .venue-court-matrix-wrap {
-  overflow-x: auto;
+  overflow: auto;
+  max-height: min(62vh, 430px);
   border: 1px solid #d5e4dc;
   border-radius: 10px;
   background: #ffffff;
+  position: relative;
 }
 
 .venue-court-matrix {
@@ -1931,6 +1933,25 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
   font-weight: 700;
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  box-shadow: 0 1px 0 #d5e4dc;
+}
+
+.venue-court-first-col-head {
+  background: #e8f2ed;
+  color: #486154;
+  font-size: 0.73rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 700;
+  position: sticky;
+  top: 0;
+  left: 0;
+  z-index: 4;
+  min-width: 116px;
+  box-shadow: 1px 0 0 #d5e4dc, 0 1px 0 #d5e4dc;
 }
 
 .venue-court-time-cell {
@@ -1939,6 +1960,20 @@
   font-size: 0.72rem;
   font-weight: 700;
   white-space: nowrap;
+}
+
+.venue-court-court-cell {
+  background: #f3faf6;
+  color: #4a6457;
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+  text-align: left !important;
+  min-width: 116px;
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  box-shadow: 1px 0 0 #d5e4dc;
 }
 
 .venue-court-slot-cell {
@@ -2831,6 +2866,37 @@
   .filters-reset-btn {
     margin-left: 0;
   }
+
+  .venue-details-panel {
+    margin: 0.3rem 0.45rem 0.65rem;
+    padding: 0.55rem 0.55rem 0.6rem;
+  }
+
+  .venue-court-matrix {
+    min-width: 540px;
+  }
+
+  .venue-court-matrix-wrap {
+    max-height: min(56vh, 360px);
+  }
+
+  .venue-court-matrix th,
+  .venue-court-matrix td {
+    padding: 0.3rem 0.3rem;
+  }
+
+  .venue-court-slot-cell {
+    min-width: 64px;
+    height: 50px;
+  }
+
+  .venue-court-slot-price {
+    font-size: 0.72rem;
+  }
+
+  .venue-court-slot-open {
+    font-size: 0.65rem;
+  }
 }
 
 @media (max-width: 480px) {
@@ -3161,6 +3227,52 @@
   .empty-state {
     padding: 2rem;
     font-size: 0.9rem;
+  }
+
+  .venue-details-panel {
+    margin: 0.26rem 0.32rem 0.55rem;
+    padding: 0.48rem 0.45rem 0.52rem;
+  }
+
+  .venue-court-matrix {
+    min-width: 460px;
+  }
+
+  .venue-court-matrix-wrap {
+    max-height: min(52vh, 320px);
+  }
+
+  .venue-court-matrix th,
+  .venue-court-matrix td {
+    padding: 0.26rem 0.22rem;
+  }
+
+  .venue-court-time-head,
+  .venue-court-column-head {
+    font-size: 0.64rem;
+  }
+
+  .venue-court-time-cell {
+    font-size: 0.64rem;
+  }
+
+  .venue-court-first-col-head,
+  .venue-court-court-cell {
+    min-width: 98px;
+  }
+
+  .venue-court-slot-cell {
+    min-width: 54px;
+    height: 44px;
+  }
+
+  .venue-court-slot-price {
+    font-size: 0.66rem;
+  }
+
+  .venue-court-slot-open,
+  .venue-court-slot-empty {
+    font-size: 0.6rem;
   }
 }
 

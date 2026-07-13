@@ -1441,45 +1441,51 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                     <table className="venue-court-matrix">
                       <thead>
                         <tr>
-                          <th className="venue-court-time-head">Time</th>
-                          {venueMatrix.courts.map((courtName) => (
-                            <th key={`${location}-${courtName}`} className="venue-court-column-head">
-                              <span className="court-name">
-                                {courtName}
-                              </span>
-                            </th>
-                          ))}
+                          <th className="venue-court-first-col-head">Court</th>
+                          {venueMatrix.timeRows
+                            .filter((timeRow) => timeRow.cells.some((c) => c.available))
+                            .map((timeRow) => (
+                              <th key={`${location}-head-${timeRow.hour}`} className="venue-court-column-head">
+                                {formatHourCompact(timeRow.hour)}
+                              </th>
+                            ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {venueMatrix.timeRows.filter((timeRow) => timeRow.cells.some((c) => c.available)).map((timeRow) => (
-                          <tr key={`${location}-time-${timeRow.hour}`}>
-                            <th className="venue-court-time-cell">{formatHourCompact(timeRow.hour)}</th>
-                            {timeRow.cells.map((cell, courtIndex) => {
-                              const bookingUrl = cell.available ? getBookingUrl(location) : null;
-                              const courtName = venueMatrix.courts[courtIndex];
-                              const cellHint = cell.available ? `${courtName} · ${formatHourDisplay(timeRow.hour)}` : null;
+                        {venueMatrix.courts.map((courtName, courtIndex) => {
+                          const visibleTimeRows = venueMatrix.timeRows.filter((timeRow) => timeRow.cells.some((c) => c.available));
 
-                              return (
-                                <td
-                                  key={`${location}-${timeRow.hour}-${courtName}`}
-                                  className={`venue-court-slot-cell ${cell.available ? 'available' : 'unavailable'} ${bookingUrl ? 'bookable' : ''}`}
-                                  onClick={() => handleCellClick(bookingUrl, location, timeRow.hour, cell.available ? 1 : 0, cell.price, 'matrix')}
-                                >
-                                  {cell.available ? (
-                                    <>
-                                      {cell.price !== null && <span className="venue-court-slot-price">${cell.price}</span>}
-                                      {cell.price === null && <span className="venue-court-slot-open">Open</span>}
-                                      {cellHint && <span className="venue-court-slot-hint">{cellHint}</span>}
-                                    </>
-                                  ) : (
-                                    <span className="venue-court-slot-empty">-</span>
-                                  )}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
+                          return (
+                            <tr key={`${location}-court-${courtName}`}>
+                              <th className="venue-court-court-cell">
+                                <span className="court-name">{courtName}</span>
+                              </th>
+                              {visibleTimeRows.map((timeRow) => {
+                                const cell = timeRow.cells[courtIndex];
+                                const bookingUrl = cell.available ? getBookingUrl(location) : null;
+                                const cellHint = cell.available ? `${courtName} · ${formatHourDisplay(timeRow.hour)}` : null;
+
+                                return (
+                                  <td
+                                    key={`${location}-${courtName}-${timeRow.hour}`}
+                                    className={`venue-court-slot-cell ${cell.available ? 'available' : 'unavailable'} ${bookingUrl ? 'bookable' : ''}`}
+                                    onClick={() => handleCellClick(bookingUrl, location, timeRow.hour, cell.available ? 1 : 0, cell.price, 'matrix')}
+                                  >
+                                    {cell.available ? (
+                                      <>
+                                        {cell.price !== null && <span className="venue-court-slot-price">${cell.price}</span>}
+                                        {cell.price === null && <span className="venue-court-slot-open">Open</span>}
+                                        {cellHint && <span className="venue-court-slot-hint">{cellHint}</span>}
+                                      </>
+                                    ) : (
+                                      <span className="venue-court-slot-empty">-</span>
+                                    )}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>
