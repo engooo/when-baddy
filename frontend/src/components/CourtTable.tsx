@@ -89,9 +89,11 @@ const PICKLEBALL_VENUE_FALLBACKS = [
 ];
 
 const CAMELLIA_MINDBODY_LOCATION_KEY = 'Mindbody Camellia Indoor Sports Centre';
+const RACQUETEER_LOCATION_KEY = 'Racqueteer Racqueteer';
+const HOURLY_PRICE_LOCATION_KEYS = new Set([CAMELLIA_MINDBODY_LOCATION_KEY, RACQUETEER_LOCATION_KEY]);
 
 function toPerThirtyMinutePrice(locationKey: string, totalSlotPrice: number, slotRangeMinutes: number | null): number {
-  if (locationKey !== CAMELLIA_MINDBODY_LOCATION_KEY || !Number.isFinite(totalSlotPrice) || totalSlotPrice <= 0) {
+  if (!HOURLY_PRICE_LOCATION_KEYS.has(locationKey) || !Number.isFinite(totalSlotPrice) || totalSlotPrice <= 0) {
     return totalSlotPrice;
   }
 
