@@ -5,10 +5,11 @@ import { scrapeRokettoBadminton } from './scrapers/rokettoScraper.js';
 import { scrapePicklePoint } from './scrapers/picklepointScraper.js';
 import { scrapeMindbody } from './scrapers/mindbodyScraper.js';
 import { scrapeTennisVenues } from './scrapers/tennisVenuesScraper.js';
+import { scrapeRacqueteer } from './scrapers/racqueteerScraper.js';
 import type { AggregatedCourt, CourtData } from './types.js';
 import { getRandomMockData } from './mockData.js';
 
-type ClubKey = 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint' | 'mindbody' | 'tennisvenues';
+type ClubKey = 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint' | 'mindbody' | 'tennisvenues' | 'racqueteer';
 type SportFilter = 'badminton' | 'pickleball';
 
 const sourceCache = new Map<string, { data: AggregatedCourt[]; timestamp: number }>();
@@ -17,10 +18,10 @@ const inflightRequests = new Map<string, Promise<AggregatedCourt[]>>();
 
 const USE_MOCK_DATA = process.env.MOCK_DATA === 'true';
 
-const CLUBS: ClubKey[] = ['alpha', 'nbc', 'pro1', 'roketto', 'picklepoint', 'mindbody', 'tennisvenues'];
+const CLUBS: ClubKey[] = ['alpha', 'nbc', 'pro1', 'roketto', 'picklepoint', 'mindbody', 'tennisvenues', 'racqueteer'];
 
 function inferSport(club: ClubKey, locationName: string): 'badminton' | 'pickleball' {
-  if (club === 'picklepoint' || club === 'mindbody' || club === 'tennisvenues') {
+  if (club === 'picklepoint' || club === 'mindbody' || club === 'tennisvenues' || club === 'racqueteer') {
     return 'pickleball';
   }
 
@@ -108,6 +109,13 @@ async function fetchClubData(club: ClubKey, date: { day: number; month: number; 
     });
   }
 
+  if (club === 'racqueteer') {
+    return scrapeRacqueteer(date).catch((e) => {
+      console.error('Racqueteer scrape failed:', e);
+      return null;
+    });
+  }
+
   return scrapePicklePoint(date).catch((e) => {
     console.error('Picklepoint scrape failed:', e);
     return null;
@@ -124,7 +132,7 @@ function getClubsForSport(sport?: SportFilter): ClubKey[] {
   }
 
   if (sport === 'pickleball') {
-    return ['nbc', 'picklepoint', 'mindbody', 'tennisvenues'];
+    return ['nbc', 'picklepoint', 'mindbody', 'tennisvenues', 'racqueteer'];
   }
 
   return CLUBS;

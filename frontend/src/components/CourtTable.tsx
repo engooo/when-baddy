@@ -17,7 +17,7 @@ import {
 import '../styles/CourtTable.css';
 
 interface AggregatedCourt {
-  club: 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint' | 'mindbody' | 'tennisvenues';
+  club: 'alpha' | 'nbc' | 'pro1' | 'roketto' | 'picklepoint' | 'mindbody' | 'racqueteer';
   sport?: 'badminton' | 'pickleball';
   location: string;
   locationId: string;
@@ -85,10 +85,6 @@ const PICKLEBALL_VENUE_FALLBACKS = [
   {
     locationKey: 'NBC Olympic Park Pickleball',
     address: 'Olympic Blvd, Sydney Olympic Park NSW 2127',
-  },
-  {
-    locationKey: 'TennisVenues Southend Tennis Centre',
-    address: '22 Chiswick St, Strathfield South NSW 2136',
   },
 ];
 
@@ -278,6 +274,17 @@ function parseLocationKey(locationKey: string): {
     };
   }
 
+  if (locationKey.startsWith('Racqueteer ')) {
+    return {
+      venueKey: 'racqueteer',
+      venueName: 'Racqueteer',
+      locationName: 'Racqueteer',
+      logoSrc: null,
+      badgeText: 'RQ',
+      badgeClass: 'venue-logo-racqueteer',
+    };
+  }
+
   if (locationKey.startsWith('Mindbody ')) {
     const mindbodyLocationName = locationKey.replace(/^Mindbody\s+/, '');
     if (mindbodyLocationName === 'Camellia Indoor Sports Centre') {
@@ -312,17 +319,6 @@ function parseLocationKey(locationKey: string): {
     };
   }
 
-  if (locationKey.startsWith('TennisVenues ')) {
-    return {
-      venueKey: 'tennisvenues-southend',
-      venueName: 'Southend Tennis Centre',
-      locationName: locationKey.replace(/^TennisVenues\s+/, ''),
-      logoSrc: '/assets/venue-logos/southend-tennis-centre-logo.jpeg',
-      badgeText: 'ST',
-      badgeClass: 'venue-logo-default',
-    };
-  }
-
   return {
     venueKey: 'default',
     venueName: 'Venue',
@@ -353,16 +349,13 @@ function getPickleballVenueType(locationKey: string): 'indoor' | 'outdoor' | nul
   return null;
 }
 
-function getEquipmentHireInfo(
-  locationKey: string,
-): { available: boolean; price: number; unitLabel: string } | null {
+function getEquipmentHireInfo(locationKey: string): { available: boolean; price: number } | null {
   if (
     locationKey === 'Mindbody Camellia Indoor Sports Centre' ||
     locationKey === 'Mindbody Ryde Multisport & Racquet Centre' ||
-    locationKey.startsWith('Picklepoint ') ||
-    locationKey === 'TennisVenues Southend Tennis Centre'
+    locationKey.startsWith('Picklepoint ')
   ) {
-    return { available: true, price: 5, unitLabel: 'each' };
+    return { available: true, price: 5 };
   }
 
   return null;
@@ -377,7 +370,7 @@ function inferCourtSport(court: AggregatedCourt): 'badminton' | 'pickleball' {
     return court.sport;
   }
 
-  if (court.club === 'picklepoint' || court.club === 'mindbody' || court.club === 'tennisvenues') {
+  if (court.club === 'picklepoint' || court.club === 'mindbody' || court.club === 'racqueteer') {
     return 'pickleball';
   }
 
@@ -572,8 +565,8 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
       return 'https://clubspark.net/Picklepoint/Booking/BookByDate';
     }
 
-    if (court.club === 'tennisvenues') {
-      return 'https://www.tennisvenues.com.au/booking/southend-tc';
+    if (court.club === 'racqueteer') {
+      return 'https://racqueteer.playbypoint.com/book/Racqueteer';
     }
 
     if (court.club === 'mindbody') {
@@ -917,9 +910,9 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                 ? 'Picklepoint'
                 : court.club === 'mindbody'
                   ? 'Mindbody'
-                  : court.club === 'tennisvenues'
-                    ? 'TennisVenues'
-                  : 'Roketto';
+                  : court.club === 'racqueteer'
+                    ? 'Racqueteer'
+                    : 'Roketto';
       const locationKey = `${clubLabel} ${court.location}`;
       if (!grouped[locationKey]) {
         grouped[locationKey] = {};
@@ -945,7 +938,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         : court.club === 'pro1' ? 'Pro1'
         : court.club === 'picklepoint' ? 'Picklepoint'
         : court.club === 'mindbody' ? 'Mindbody'
-        : court.club === 'tennisvenues' ? 'TennisVenues'
+        : court.club === 'racqueteer' ? 'Racqueteer'
         : 'Roketto';
       const locationKey = `${clubLabel} ${court.location}`;
       if (!map[locationKey] && court.address) {
@@ -965,7 +958,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         : court.club === 'pro1' ? 'Pro1'
         : court.club === 'picklepoint' ? 'Picklepoint'
         : court.club === 'mindbody' ? 'Mindbody'
-        : court.club === 'tennisvenues' ? 'TennisVenues'
+        : court.club === 'racqueteer' ? 'Racqueteer'
         : 'Roketto';
       const locationKey = `${clubLabel} ${court.location}`;
 
@@ -1467,51 +1460,45 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                     <table className="venue-court-matrix">
                       <thead>
                         <tr>
-                          <th className="venue-court-first-col-head">Court</th>
-                          {venueMatrix.timeRows
-                            .filter((timeRow) => timeRow.cells.some((c) => c.available))
-                            .map((timeRow) => (
-                              <th key={`${location}-head-${timeRow.hour}`} className="venue-court-column-head">
-                                {formatHourCompact(timeRow.hour)}
-                              </th>
-                            ))}
+                          <th className="venue-court-time-head">Time</th>
+                          {venueMatrix.courts.map((courtName) => (
+                            <th key={`${location}-${courtName}`} className="venue-court-column-head">
+                              <span className="court-name">
+                                {courtName}
+                              </span>
+                            </th>
+                          ))}
                         </tr>
                       </thead>
                       <tbody>
-                        {venueMatrix.courts.map((courtName, courtIndex) => {
-                          const visibleTimeRows = venueMatrix.timeRows.filter((timeRow) => timeRow.cells.some((c) => c.available));
+                        {venueMatrix.timeRows.filter((timeRow) => timeRow.cells.some((c) => c.available)).map((timeRow) => (
+                          <tr key={`${location}-time-${timeRow.hour}`}>
+                            <th className="venue-court-time-cell">{formatHourCompact(timeRow.hour)}</th>
+                            {timeRow.cells.map((cell, courtIndex) => {
+                              const bookingUrl = cell.available ? getBookingUrl(location) : null;
+                              const courtName = venueMatrix.courts[courtIndex];
+                              const cellHint = cell.available ? `${courtName} · ${formatHourDisplay(timeRow.hour)}` : null;
 
-                          return (
-                            <tr key={`${location}-court-${courtName}`}>
-                              <th className="venue-court-court-cell">
-                                <span className="court-name">{courtName}</span>
-                              </th>
-                              {visibleTimeRows.map((timeRow) => {
-                                const cell = timeRow.cells[courtIndex];
-                                const bookingUrl = cell.available ? getBookingUrl(location) : null;
-                                const cellHint = cell.available ? `${courtName} · ${formatHourDisplay(timeRow.hour)}` : null;
-
-                                return (
-                                  <td
-                                    key={`${location}-${courtName}-${timeRow.hour}`}
-                                    className={`venue-court-slot-cell ${cell.available ? 'available' : 'unavailable'} ${bookingUrl ? 'bookable' : ''}`}
-                                    onClick={() => handleCellClick(bookingUrl, location, timeRow.hour, cell.available ? 1 : 0, cell.price, 'matrix')}
-                                  >
-                                    {cell.available ? (
-                                      <>
-                                        {cell.price !== null && <span className="venue-court-slot-price">${cell.price}</span>}
-                                        {cell.price === null && <span className="venue-court-slot-open">Open</span>}
-                                        {cellHint && <span className="venue-court-slot-hint">{cellHint}</span>}
-                                      </>
-                                    ) : (
-                                      <span className="venue-court-slot-empty">-</span>
-                                    )}
-                                  </td>
-                                );
-                              })}
-                            </tr>
-                          );
-                        })}
+                              return (
+                                <td
+                                  key={`${location}-${timeRow.hour}-${courtName}`}
+                                  className={`venue-court-slot-cell ${cell.available ? 'available' : 'unavailable'} ${bookingUrl ? 'bookable' : ''}`}
+                                  onClick={() => handleCellClick(bookingUrl, location, timeRow.hour, cell.available ? 1 : 0, cell.price, 'matrix')}
+                                >
+                                  {cell.available ? (
+                                    <>
+                                      {cell.price !== null && <span className="venue-court-slot-price">${cell.price}</span>}
+                                      {cell.price === null && <span className="venue-court-slot-open">Open</span>}
+                                      {cellHint && <span className="venue-court-slot-hint">{cellHint}</span>}
+                                    </>
+                                  ) : (
+                                    <span className="venue-court-slot-empty">-</span>
+                                  )}
+                                </td>
+                              );
+                            })}
+                          </tr>
+                        ))}
                       </tbody>
                     </table>
                   </div>
@@ -2059,9 +2046,7 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
                   <div className="booking-modal-info-card">
                     <span className="info-card-label">EQUIPMENT HIRE</span>
                     <span className="info-card-primary">{equipmentHire ? 'Available' : 'Check venue'}</span>
-                    <span className="info-card-secondary">
-                      {equipmentHire ? `$${equipmentHire.price} ${equipmentHire.unitLabel}` : 'pricing not listed'}
-                    </span>
+                    <span className="info-card-secondary">{equipmentHire ? `$${equipmentHire.price} per racquet` : 'pricing not listed'}</span>
                   </div>
                 </div>
                 <div className="booking-modal-actions-v2">
