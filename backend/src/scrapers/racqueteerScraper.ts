@@ -2,7 +2,7 @@ import axios, { type AxiosInstance } from 'axios';
 import { load } from 'cheerio';
 import { wrapper } from 'axios-cookiejar-support';
 import { CookieJar } from 'tough-cookie';
-import type { Court, CourtData, TimeSlot } from '../types.js';
+import type { Court, CourtData } from '../types.js';
 
 const RACQUETEER_LOCATION = {
   id: 'racqueteer-lidcombe',
@@ -19,10 +19,8 @@ const SESSION_CACHE_MS = 25 * 60 * 1000;
 const PRICE_PER_HOUR = 50;
 const SLOT_SECONDS = 3600;
 
-const SURFACES = [
-  { surface: 'indoor_pickleball', courtId: 'racqueteer-indoor', courtName: 'Indoor Pickleball' },
-  { surface: 'outdoor_pickleball', courtId: 'racqueteer-outdoor', courtName: 'Outdoor Pickleball' },
-] as const;
+const SURFACES = ['indoor_pickleball', 'outdoor_pickleball'] as const;
+const COURT_QUERY_CONCURRENCY = 4;
 
 interface AvailableHour {
   facility_schedule_id: number;
@@ -36,6 +34,13 @@ interface AvailableHour {
 
 interface AvailableHoursResponse {
   available_hours: AvailableHour[];
+}
+
+interface AvailableCourt {
+  id: number;
+  name: string;
+  surface: string;
+  is_parent: boolean;
 }
 
 let authenticatedClientPromise: Promise<AxiosInstance> | null = null;
@@ -163,20 +168,77 @@ async function fetchAvailableHours(
   return response.data;
 }
 
-function mapToCourt(courtId: string, courtName: string, data: AvailableHoursResponse): Court {
-  const availability: TimeSlot[] = (data.available_hours ?? [])
-    .filter((hour) => hour.available && !hour.in_waitlist)
-    .map((hour) => {
-      const startMinutes = hour.seconds_from_midnight / 60;
-      const endMinutes = startMinutes + SLOT_SECONDS / 60;
-      return {
-        timeSlot: `${toDisplayTime(startMinutes)}–${toDisplayTime(endMinutes)}`,
-        status: 'available' as const,
-        price: PRICE_PER_HOUR,
-      };
-    });
+async function fetchAvailableCourts(
+  client: AxiosInstance,
+  timestamp: number,
+  surface: string,
+  secondsFromMidnight: number
+): Promise<AvailableCourt[]> {
+  const params = new URLSearchParams({
+    date: String(timestamp),
+    surface,
+    start_hour: String(secondsFromMidnight),
+    hour_end: String(secondsFromMidnight + SLOT_SECONDS),
+    kind: 'reservation',
+  });
+  const url = `${BASE_URL}/api/facilities/${FACILITY_ID}/available_courts?${params.toString()}`;
+  const response = await client.get<AvailableCourt[]>(url, {
+    headers: { Accept: 'application/json', Referer: `${BASE_URL}/book/Racqueteer` },
+  });
 
-  return { courtId, courtName, availability };
+  if (response.status < 200 || response.status >= 300 || !Array.isArray(response.data)) {
+    throw new Error(`Racqueteer available_courts request failed with HTTP ${response.status}`);
+  }
+
+  return response.data;
+}
+
+// Runs async tasks with bounded concurrency so we don't burst-hammer the facility's API.
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results: R[] = new Array(items.length);
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < items.length) {
+      const currentIndex = nextIndex++;
+      results[currentIndex] = await fn(items[currentIndex]);
+    }
+  }
+
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, () => worker()));
+  return results;
+}
+
+async function fetchCourtsForSurface(
+  client: AxiosInstance,
+  timestamp: number,
+  surface: string,
+  courts: Map<string, Court>
+): Promise<void> {
+  const hoursData = await fetchAvailableHours(client, timestamp, surface);
+  const openHours = (hoursData.available_hours ?? []).filter((hour) => hour.available && !hour.in_waitlist);
+
+  const perHourCourts = await mapWithConcurrency(openHours, COURT_QUERY_CONCURRENCY, (hour) =>
+    fetchAvailableCourts(client, timestamp, surface, hour.seconds_from_midnight)
+  );
+
+  openHours.forEach((hour, index) => {
+    const startMinutes = hour.seconds_from_midnight / 60;
+    const endMinutes = startMinutes + SLOT_SECONDS / 60;
+    const timeSlot = `${toDisplayTime(startMinutes)}–${toDisplayTime(endMinutes)}`;
+
+    for (const court of perHourCourts[index]) {
+      const courtKey = String(court.id);
+      if (!courts.has(courtKey)) {
+        courts.set(courtKey, { courtId: courtKey, courtName: court.name.trim(), availability: [] });
+      }
+      courts.get(courtKey)!.availability.push({
+        timeSlot,
+        status: 'available',
+        price: PRICE_PER_HOUR,
+      });
+    }
+  });
 }
 
 export async function scrapeRacqueteer(date?: { day: number; month: number; year: number }): Promise<CourtData> {
@@ -190,15 +252,14 @@ export async function scrapeRacqueteer(date?: { day: number; month: number; year
     const client = await getAuthenticatedClient();
     const timestamp = getSydneyMidnightEpochSeconds(d);
 
-    const courts = await Promise.all(
-      SURFACES.map(async ({ surface, courtId, courtName }) => {
-        const data = await fetchAvailableHours(client, timestamp, surface);
-        return mapToCourt(courtId, courtName, data);
-      })
-    );
+    const courtsByKey = new Map<string, Court>();
+    for (const surface of SURFACES) {
+      await fetchCourtsForSurface(client, timestamp, surface, courtsByKey);
+    }
 
+    const courts = Array.from(courtsByKey.values()).sort((a, b) => a.courtName.localeCompare(b.courtName));
     const availableSlots = courts.reduce((sum, court) => sum + court.availability.length, 0);
-    console.log(`Racqueteer: ${courts.length} court groups, ${availableSlots} available sessions on ${formatDateYYYYMMDD(d)}`);
+    console.log(`Racqueteer: ${courts.length} courts, ${availableSlots} available sessions on ${formatDateYYYYMMDD(d)}`);
 
     return {
       club: 'racqueteer',
