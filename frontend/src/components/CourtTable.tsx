@@ -576,6 +576,10 @@ export const CourtTable: React.FC<WeeklyCourtTableProps> = ({
         return 'https://go.mindbodyonline.com/book/widgets/appointments/view/b2175829c93/services';
       }
 
+      if (court.locationId === 'mindbody-ryde') {
+        return 'https://www.tennisworldonline.com.au/bookacourt/#bookacourt';
+      }
+
       if (
         court.locationId === 'mindbody-galuwa-indoor' ||
         court.locationId === 'mindbody-galuwa-outdoor'

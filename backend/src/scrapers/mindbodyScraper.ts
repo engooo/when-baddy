@@ -93,9 +93,9 @@ function getRydeHourlyRate(date: string, startMinutes: number): number {
   const dt = new Date(year, month - 1, day);
   const isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
 
-  // Off-peak: weekdays 7:00am–5:00pm => $21/hr
+  // Multi-Line courts: weekdays 7:00am-5:00pm => $25/hr, weekends => $30/hr.
   const isWeekdayOffPeak = !isWeekend && startMinutes >= 7 * 60 && startMinutes < 17 * 60;
-  return isWeekdayOffPeak ? 21 : 24;
+  return isWeekdayOffPeak ? 25 : 30;
 }
 
 function getRydeSlotPrice(date: string, startMinutes: number, durationMinutes: number): number {
@@ -108,9 +108,9 @@ function getRydePremiumSlotPrice(date: string, startMinutes: number, durationMin
   const [yearStr, monthStr, dayStr] = date.split('-');
   const dt = new Date(Number(yearStr), Number(monthStr) - 1, Number(dayStr));
   const isWeekend = dt.getDay() === 0 || dt.getDay() === 6;
-  // Peak: weekdays 5pm–10pm => $30/hr. All other times (off-peak + weekends) => $25/hr.
-  const isWeekdayPeak = !isWeekend && startMinutes >= 17 * 60 && startMinutes < 22 * 60;
-  const hourlyRate = isWeekdayPeak ? 30 : 25;
+  // Premium Dedicated courts: weekdays 5:00pm-10:30pm => $35/hr, all other times => $30/hr.
+  const isWeekdayPeak = !isWeekend && startMinutes >= 17 * 60 && startMinutes < 22 * 60 + 30;
+  const hourlyRate = isWeekdayPeak ? 35 : 30;
   return Math.round(hourlyRate * (durationMinutes / 60) * 100) / 100;
 }
 
@@ -381,7 +381,7 @@ export async function scrapeMindbody(date?: { day: number; month: number; year: 
       });
     }
 
-    // Scrape Premium Pickleball courts (service 132, Courts 1–4, $25/$30/hr)
+    // Scrape Premium Pickleball courts (service 132, Courts 1-4, $30/$35/hr)
     const premiumStaffHtml = await fetchHtml(
       `/widgets/appointments/view/${RYDE_WIDGET_ID}/staff?locationId=${RYDE_LOCATION_ID}&serviceId=${RYDE_PREMIUM_PICKLEBALL_30_SERVICE_ID}&staffId=${seedStaffId}`
     );
